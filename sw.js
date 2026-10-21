@@ -1,7 +1,9 @@
 /* PRINT ME — service worker : l'application reste utilisable sans Internet.
    L'index est toujours demande au reseau d'abord, puis servi depuis le cache. */
 const CACHE = 'printme-v1';
-const COQUILLE = ['./', './index.html', './manifest.webmanifest', './vendor/qrcode.min.js', './vendor/icone.svg'];
+/* './' plutot que './index.html' : en ligne, /index.html redirige vers /,
+   et un cache ne peut pas stocker une redirection (addAll echouerait). */
+const COQUILLE = ['./', './manifest.webmanifest', './vendor/qrcode.min.js', './vendor/icone.svg'];
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();
@@ -32,7 +34,7 @@ self.addEventListener('fetch', (e) => {
         return res;
       })
       .catch(() =>
-        caches.match(r).then((m) => m || (page ? caches.match('./index.html') : Promise.reject(new Error('hors ligne'))))
+        caches.match(r).then((m) => m || (page ? caches.match('./') : Promise.reject(new Error('hors ligne'))))
       )
   );
 });

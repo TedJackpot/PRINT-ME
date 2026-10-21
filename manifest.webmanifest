@@ -3,15 +3,29 @@
   "short_name": "PRINT ME",
   "description": "Éditeur et impression d'étiquettes (TSPL, ZPL, ESC/POS) pour imprimantes thermiques : Pass-Service, Colissimo, Vinted, bons de commande.",
   "lang": "fr",
-  "start_url": "index.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#e4e9f0",
   "theme_color": "#2a3bd0",
-  "categories": ["business", "productivity", "utilities"],
+  "categories": [
+    "business",
+    "productivity",
+    "utilities"
+  ],
   "icons": [
-    { "src": "vendor/icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "vendor/icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+    {
+      "src": "vendor/icone.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "vendor/icone.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
   ]
 }

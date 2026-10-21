@@ -6,6 +6,13 @@
 Dossier pret a l'emploi : copiez le dossier entier sur une cle USB,
 un autre ordinateur ou un telephone, puis suivez "DEMARRAGE".
 
+VERSION EN LIGNE (aucune installation, un simple lien) :
+  https://site-38181ec2e74446f585d6d6c069e7f97d.freebuff.page
+  L'application s'ouvre dans le navigateur et fonctionne hors ligne
+  une fois chargee. Pour l'impression directe vers Windows, lancez
+  aussi le helper sur le poste : python helper/printme_helper.py
+  (l'application s'y connecte automatiquement).
+
 --------------------------------------------------------------------
 1) DEMARRAGE RAPIDE
 --------------------------------------------------------------------

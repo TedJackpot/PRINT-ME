@@ -1171,7 +1171,9 @@ function fillPrinterSel(list){
   const s=$('#printerSel');if(!s)return;
   const cur=S.prefs.printerName||conn.name;
   s.innerHTML='';
-  for(const n of list){
+  /* les files qui détruisent les commandes passent en fin de liste */
+  const ordonnees=[...list].sort((a,b)=>(isTextOnly(a)?1:0)-(isTextOnly(b)?1:0));
+  for(const n of ordonnees){
     const drv=driverOf(n);
     s.append(h('option',{value:n},n+(drv?'  ('+drv+')':'')+(isTextOnly(n)?'  ⛔ texte':'')));
   }
@@ -1219,7 +1221,7 @@ async function connect(){
     if(m==='local'){
       const list=await helperPrinters();
       if(!list.length)throw new Error('Aucune imprimante trouvée. Vérifiez qu\'une imprimante est installée dans Windows.');
-      conn.localPrinters=list;fillPrinterSel(list);
+      conn.localPrinters=list;
       /* On écarte les files « Generic / Text Only » : elles transforment
          les commandes en texte au lieu de les exécuter. */
       const saines=list.filter(n=>!isTextOnly(n));
@@ -1227,6 +1229,7 @@ async function connect(){
       const pick=(S.prefs.printerName&&candidates.includes(S.prefs.printerName))?S.prefs.printerName
         :candidates.find(n=>n.toUpperCase().includes('PRINT ME'))||candidates.find(n=>/LABEL|M420|TSPL/i.test(n))||candidates[0];
       conn.mode='local';conn.name=pick;S.prefs.printerName=pick;savePrefs();
+      fillPrinterSel(list);          /* après le choix : le menu montre la vraie file */
       updateConn();
       if(isTextOnly(pick))toast('Attention : la file « '+pick+' » utilise le pilote « Generic / Text Only », qui imprime les commandes en clair. Créez une file avec le pilote de l\'imprimante.',true);
       else toast('Imprimante directe : '+pick);

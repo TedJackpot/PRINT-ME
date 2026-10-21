@@ -343,6 +343,9 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        # Page servie en HTTPS (version en ligne) : Chrome demande cette
+        # autorisation avant d'appeler une adresse locale (127.0.0.1).
+        self.send_header("Access-Control-Allow-Private-Network", "true")
 
     def do_OPTIONS(self):
         self.send_response(204)

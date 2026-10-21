@@ -4,6 +4,20 @@ Application d'impression d'étiquettes pour le Pass-Service : formulaire, aperç
 
 L'application tient dans **un seul fichier `index.html`** : elle fonctionne hors ligne, sans compte, sans serveur obligatoire. Seule l'impression directe vers Windows utilise un petit helper Python local.
 
+## Ouvrir l'application sans rien installer
+
+**https://site-38181ec2e74446f585d6d6c069e7f97d.freebuff.page**
+
+Le lien ouvre l'application complète dans le navigateur (Chrome, Edge, Firefox, Safari, Android). Une fois la page chargée, elle fonctionne **hors ligne** grâce au service worker, et peut être installée sur l'écran d'accueil.
+
+Pour imprimer en mode **Direct (imprimante Windows)** depuis cette version en ligne, lancez le helper sur le poste :
+
+```bash
+python helper/printme_helper.py
+```
+
+La page HTTPS le contacte sur `http://127.0.0.1:8765` ; le helper autorise explicitement cette origine (`Access-Control-Allow-Private-Network`). Sans helper, les modes « Navigateur », « USB » et « Bluetooth » restent disponibles.
+
 ## Démarrage rapide
 
 | Système | Commande |
