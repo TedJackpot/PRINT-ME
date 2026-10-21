@@ -58,6 +58,7 @@ Demarrer-Windows.bat    lanceur Windows
 Demarrer-Mac.command    lanceur macOS
 Demarrer-Linux.sh       lanceur Linux
 labelprint_server.py    serveur local multiplateforme
+Installer-PRINT-ME.ps1  remet la file d'impression d'aplomb
 helper/printme_helper.py  envoi brut + gestion de la file Windows
 vendor/qrcode.min.js    générateur de QR code (hors ligne)
 vendor/icone.svg        icône de l'application
@@ -67,9 +68,22 @@ modeles/                partage de modèles
 LISEZMOI.txt            mode d'emploi détaillé
 ```
 
+## Dépannage : « l'étiquette sort avec du texte »
+
+Si le papier sort avec les commandes en clair (`TEXT 32,128,...`, `SIZE 100 mm,150 mm`, `PRINT 1,1`), ce n'est pas l'imprimante qui est en cause mais le **pilote de la file d'impression**. Le pilote `Generic / Text Only` remplace les codes de commande par des caractères au lieu de les transmettre.
+
+L'application affiche désormais le pilote de chaque file et marque les files fautives :
+
+```
+PRINT ME  (Generic / Text Only)  ⛔ texte
+LABELPASS  (LABEL)
+```
+
+Une file marquée ⛔ est **refusée à l'impression** et n'est plus jamais choisie automatiquement. Pour la remplacer par une file saine, exécutez `Installer-PRINT-ME.ps1` (clic droit → Exécuter avec PowerShell) : il supprime la file fautive et la recrée avec le pilote de l'imprimante.
+
 ## Limites connues
 
-- **Le langage de l'imprimante n'est pas deviné automatiquement.** Certains modèles vendus sous le nom « TS-M420 » sont en réalité des imprimantes à pilote GDI : elles n'interprètent ni TSPL, ni ZPL, ni ESC/POS, et impriment les commandes en texte brut. Si l'étiquette sort avec des `TEXT 32,128,...`, c'est que l'appareil attend un autre langage ou que le pilote installé n'est pas le pilote constructeur.
+- **Le langage de l'imprimante n'est pas deviné automatiquement.** L'appareil concerné est une TOUSEI TS-M420 (`USB 0416:5011`), dont l'auto-test annonce TSPL. Tant que la file d'impression n'utilise pas un pilote qui transmet les octets, aucun langage ne peut fonctionner.
 - L'impression directe suppose que l'imprimante est **présente** dans Windows : une imprimante débranchée laisse la file hors ligne et bloque les envois.
 - Le mode Bluetooth dépend du navigateur et de l'imprimante ; il n'est pas universel.
 

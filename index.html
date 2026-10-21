@@ -1155,12 +1155,26 @@ async function helperFetch(chemin,opts){
   if(j&&j.error)throw new Error(j.error);
   return j;
 }
-const helperPrinters=async()=>(await helperFetch('/printers')).printers||[];
+/* Le helper transmet aussi le pilote de chaque file. Le pilote
+   « Generic / Text Only » remplace les codes de commande par des
+   caractères : une étiquette TSPL y sort en clair (TEXT 32,128,...).
+   On connaît donc le pilote pour écarter ces files. */
+let PRINTER_INFO=[];
+const helperPrinters=async()=>{
+  const j=await helperFetch('/printers');
+  PRINTER_INFO=(j.details||[]).slice();
+  return j.printers||[];
+};
+const driverOf=n=>{const d=PRINTER_INFO.find(x=>x.name===n);return (d&&d.driver)||''};
+const isTextOnly=n=>{const d=PRINTER_INFO.find(x=>x.name===n);return !!(d&&d.textOnly)};
 function fillPrinterSel(list){
   const s=$('#printerSel');if(!s)return;
   const cur=S.prefs.printerName||conn.name;
   s.innerHTML='';
-  for(const n of list)s.append(h('option',{value:n},n));
+  for(const n of list){
+    const drv=driverOf(n);
+    s.append(h('option',{value:n},n+(drv?'  ('+drv+')':'')+(isTextOnly(n)?'  ⛔ texte':'')));
+  }
   if(cur&&list.includes(cur))s.value=cur;
 }
 /* Un travail « Retenu » ou en erreur occupe le port : la file se remplit et
@@ -1206,10 +1220,16 @@ async function connect(){
       const list=await helperPrinters();
       if(!list.length)throw new Error('Aucune imprimante trouvée. Vérifiez qu\'une imprimante est installée dans Windows.');
       conn.localPrinters=list;fillPrinterSel(list);
-      const pick=(S.prefs.printerName&&list.includes(S.prefs.printerName))?S.prefs.printerName
-        :list.find(n=>n.toUpperCase().includes('PRINT ME'))||list.find(n=>/LABEL|M420|TSPL/i.test(n))||list[0];
+      /* On écarte les files « Generic / Text Only » : elles transforment
+         les commandes en texte au lieu de les exécuter. */
+      const saines=list.filter(n=>!isTextOnly(n));
+      const candidates=saines.length?saines:list;
+      const pick=(S.prefs.printerName&&candidates.includes(S.prefs.printerName))?S.prefs.printerName
+        :candidates.find(n=>n.toUpperCase().includes('PRINT ME'))||candidates.find(n=>/LABEL|M420|TSPL/i.test(n))||candidates[0];
       conn.mode='local';conn.name=pick;S.prefs.printerName=pick;savePrefs();
-      updateConn();toast('Imprimante directe : '+pick);
+      updateConn();
+      if(isTextOnly(pick))toast('Attention : la file « '+pick+' » utilise le pilote « Generic / Text Only », qui imprime les commandes en clair. Créez une file avec le pilote de l\'imprimante.',true);
+      else toast('Imprimante directe : '+pick);
       checkJobs(true);
       return;
     }
@@ -1302,6 +1322,10 @@ async function doPrint(){
     if(S.prefs.mode==='browser'){await printBrowser();}
     else{
       if(!isConnected()){await connect();if(!isConnected())return}
+      if(isTextOnly(conn.name)){
+        toast('File « '+conn.name+' » refusée : son pilote « Generic / Text Only » imprime les commandes en clair — c\'est exactement ce qui faisait sortir du texte illisible. Choisissez une autre file, ou installez le pilote constructeur.',true);
+        return;
+      }
       const n=rowCount();
       for(let i=0;i<n;i++){
         btn.textContent=n>1?`Envoi ${i+1}/${n}…`:'Envoi…';

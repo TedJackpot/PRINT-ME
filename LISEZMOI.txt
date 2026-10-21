@@ -107,6 +107,19 @@ ANDROID
     - essayez "Imprimante > Tester ce langage (1 etiquette)" ;
     - videz la file : voir "Imprimantes > Ouvrir la file" > annuler.
 
+  Les commandes sortent en clair (TEXT 32,128,... sur le papier)
+    -> le pilote de la file transforme les commandes en texte.
+       C'est exactement ce que fait le pilote "Generic / Text Only",
+       tres souvent installe par erreur a la place du pilote reel.
+       Verifiez : Windows > Imprimantes > clic droit sur la file >
+       Proprietes > Avance > bouton "Nouveau pilote".
+       Ou lancez Installer-PRINT-ME.ps1 (clic droit > Executer avec
+       PowerShell) : il supprime la file fautive et la recree avec le
+       pilote de l'imprimante.
+       L'application affiche ces files sous la forme
+       "PRINT ME (Generic / Text Only)  ⛔ texte" et refuse d'y
+       imprimer, pour ne plus produire d'etiquette illisible.
+
   Texte brouille / caracteres illisibles
     -> revenez au langage "TSPL - texte natif" (Rendu net coche).
 
@@ -124,6 +137,7 @@ ANDROID
 --------------------------------------------------------------------
 
   index.html              l'application complete (un seul fichier)
+  Installer-PRINT-ME.ps1  cree une file d'impression avec le bon pilote
   Demarrer-Windows.bat    lanceur Windows
   Demarrer-Mac.command    lanceur macOS
   Demarrer-Linux.sh       lanceur Linux

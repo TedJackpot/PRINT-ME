@@ -82,6 +82,91 @@ def list_printers(timeout=6.0):
     raise OSError("Enumeration des imprimantes trop lente (pilote bloque ?)")
 
 
+class PRINTER_INFO_2(ctypes.Structure):
+    _fields_ = [
+        ("pServerName", ctypes.c_wchar_p),
+        ("pPrinterName", ctypes.c_wchar_p),
+        ("pShareName", ctypes.c_wchar_p),
+        ("pPortName", ctypes.c_wchar_p),
+        ("pDriverName", ctypes.c_wchar_p),
+        ("pComment", ctypes.c_wchar_p),
+        ("pLocation", ctypes.c_wchar_p),
+        ("pDevMode", ctypes.c_void_p),
+        ("pSepFile", ctypes.c_wchar_p),
+        ("pPrintProcessor", ctypes.c_wchar_p),
+        ("pDatatype", ctypes.c_wchar_p),
+        ("pParameters", ctypes.c_wchar_p),
+        ("pSecurityDescriptor", ctypes.c_void_p),
+        ("Attributes", wt.DWORD),
+        ("Priority", wt.DWORD),
+        ("DefaultPriority", wt.DWORD),
+        ("StartTime", wt.DWORD),
+        ("UntilTime", wt.DWORD),
+        ("Status", wt.DWORD),
+        ("cJobs", wt.DWORD),
+        ("AveragePPM", wt.DWORD),
+    ]
+
+
+def _enum_printer_details():
+    flags = 0x2 | 0x4  # PRINTER_ENUM_LOCAL | PRINTER_ENUM_CONNECTIONS
+    needed = wt.DWORD()
+    count = wt.DWORD()
+    winspool.EnumPrintersW(flags, None, 2, None, 0, ctypes.byref(needed), ctypes.byref(count))
+    item = ctypes.sizeof(PRINTER_INFO_2)
+    slots = (needed.value + item - 1) // item
+    buf = (PRINTER_INFO_2 * max(1, slots))()
+    ok = winspool.EnumPrintersW(flags, None, 2, buf, needed.value, ctypes.byref(needed), ctypes.byref(count))
+    if not ok:
+        return []
+    return [
+        {
+            "name": buf[i].pPrinterName,
+            "driver": buf[i].pDriverName or "",
+            "port": buf[i].pPortName or "",
+        }
+        for i in range(count.value)
+    ]
+
+
+def driver_detruit_les_commandes(driver):
+    """Vrai pour les pilotes qui transforment les octets en texte.
+
+    "Generic / Text Only" ne transmet pas les codes de commande : il les
+    remplace par des caracteres. Une etiquette TSPL envoyee a cette file
+    sort en clair ("TEXT 32,128,\"De : Pass\""), ce qui donne l'impression
+    qu'aucun langage ne fonctionne. C'est la cause la plus frequente.
+    """
+    d = (driver or "").lower()
+    return ("text only" in d) or ("generic / text" in d)
+
+
+def list_printer_details(timeout=8.0):
+    """Comme list_printers(), mais avec le PILOTE de chaque file."""
+    import threading
+
+    box = {}
+
+    def _run():
+        try:
+            box["ok"] = _enum_printer_details()
+        except Exception as e:  # noqa: BLE001
+            box["err"] = str(e)
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+    t.join(timeout)
+
+    details = box.get("ok") or []
+    if details:
+        for d in details:
+            d["textOnly"] = driver_detruit_les_commandes(d.get("driver"))
+        return details
+
+    # Repli : noms seuls, sans pilote (l'application reste utilisable).
+    return [{"name": n, "driver": "", "port": "", "textOnly": False} for n in list_printers()]
+
+
 class JOB_INFO_1(ctypes.Structure):
     _fields_ = [
         ("JobId", wt.DWORD),
@@ -277,15 +362,18 @@ class Handler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         if url.path == "/printers":
             try:
-                names = list_printers()
+                details = list_printer_details()
+                names = [d["name"] for d in details]
                 _LAST_PRINTERS.clear()
                 _LAST_PRINTERS.extend(names)
-                self._json({"printers": names})
+                self._json({"printers": names, "details": details})
             except Exception as e:
                 # On retombe sur la derniere liste connue plutot que d'echouer :
                 # l'imprimante a deja ete utilisee avec succes.
                 if _LAST_PRINTERS:
-                    self._json({"printers": list(_LAST_PRINTERS)})
+                    self._json({"printers": list(_LAST_PRINTERS),
+                                "details": [{"name": n, "driver": "", "port": "",
+                                             "textOnly": False} for n in _LAST_PRINTERS]})
                 else:
                     self._json({"error": str(e)}, 500)
         elif url.path == "/jobs":
@@ -304,7 +392,8 @@ class Handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length") or 0)
         raw = self.rfile.read(length) if length else b""
         if self.path == "/printers":
-            self._json({"printers": list_printers()})
+            details = list_printer_details()
+            self._json({"printers": [d["name"] for d in details], "details": details})
             return
         if self.path == "/print":
             try:
