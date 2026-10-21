@@ -1,0 +1,31 @@
+MODELES D'ETIQUETTES — partage et sauvegarde
+============================================
+
+Les 11 modeles fournis sont deja dans l'application (onglet "Modeles") :
+Pass-Service 100x150, Colissimo 100x150, DYMO Expedition 102x152,
+DYMO Adresse 89x36, Vinted 40x60, Bon de commande 60x80, Courrier 40x60,
+Produit 40x60, Prix 40x30, Colis 100x150 (generique), Etiquette libre.
+
+POUR PARTAGER UN MODELE AVEC UN AUTRE ORDINATEUR
+------------------------------------------------
+1. Dans l'application, onglet "Modeles" : "Exporter"
+   -> un fichier etiquette.json est telecharge.
+2. Renommez-le (ex. pass-service-100x150.json) et deposez-le dans ce
+   dossier "modeles".
+3. Sur l'autre ordinateur : "Importer", puis choisissez le fichier.
+
+POUR GARDER UN MODELE PERSONNALISE
+----------------------------------
+Onglet "Modeles" > "Enregistrer ce modele" : il est conserve dans le
+navigateur (memes reglages au prochain demarrage).
+
+CONTENU D'UN FICHIER MODELE
+---------------------------
+{
+  "label": { "w": 100, "h": 150, "dpi": 203, "gap": 2, "paper": "auto" },
+  "els":   [ ... les elements : texte, code-barres, QR, image, ligne ... ],
+  "vars":  { "destinataire": "...", "suivi": "...", "commande": "..." }
+}
+
+Champs variables : ecrivez {{nom}} dans un texte, un code-barres ou un
+QR code et le champ correspondant apparait dans l'onglet "Donnees".

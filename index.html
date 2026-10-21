@@ -1,0 +1,1491 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2a3bd0">
+<meta name="description" content="PRINT ME - editeur et impression d'etiquettes (TSPL, ZPL, ESC/POS) pour imprimantes thermiques.">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>PRINT ME — Étiquettes</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="vendor/icone.svg" type="image/svg+xml">
+<!-- Bibliotheque QR chargee en local : l'application fonctionne sans Internet -->
+<script src="vendor/qrcode.min.js"></script>
+<script>window.qrcode||document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"><\/script>');</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --bg:#e4e9f0;--panel:#fff;--panel2:#f2f5f9;--ink:#15202b;--mute:#586676;--line:#d0d8e2;
+  --accent:#2a3bd0;--accent-ink:#fff;--accent-soft:#e2e6fb;--ok:#0f7a4a;--bad:#b3261e;
+  --font:"Archivo",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#10161d;--panel:#18212b;--panel2:#1f2a36;--ink:#e8eef5;--mute:#93a2b3;--line:#2c3947;
+    --accent:#8393ff;--accent-ink:#0b1020;--accent-soft:#252d52;--ok:#4cd694;--bad:#ff8a80}
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%}
+body{font:14px/1.4 var(--font);color:var(--ink);background:var(--bg);display:flex;flex-direction:column;min-height:100dvh;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.top{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.top h1{font-size:18px;font-weight:700;margin:0;letter-spacing:-.01em}
+.meta{color:var(--mute);font-size:13px}
+.grow{flex:1}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 12px;font-weight:500;display:inline-flex;align-items:center;gap:8px}
+.btn:hover{background:var(--panel2)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.primary[disabled]{opacity:.6;cursor:progress}
+.btn.sm{padding:5px 9px;font-size:13px;border-radius:6px}
+.btn.icon{padding:8px;width:36px;justify-content:center}
+.btn[disabled]{opacity:.45;cursor:default}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--line);display:inline-block}
+.dot.on{background:var(--ok)}
+.copies{display:flex;align-items:center;gap:6px;color:var(--mute)}
+.copies input{width:60px}
+
+.app{flex:1;display:grid;grid-template-columns:310px minmax(0,1fr) 330px;min-height:0}
+.col{overflow:auto;padding:12px;display:flex;flex-direction:column;gap:12px;background:var(--bg)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.panel h2{margin:0 0 8px;font-size:15px;font-weight:700}
+.panel h3{margin:12px 0 4px;font-size:13px;font-weight:600;color:var(--mute)}
+.hint{color:var(--mute);font-size:13px;margin:6px 0}
+.tabs{display:none}
+
+input[type=text],input[type=number],select,textarea{width:100%;border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:6px 8px;min-width:0}
+textarea{resize:vertical;min-height:34px}
+input[type=range]{width:100%}
+input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent)}
+.f{display:grid;grid-template-columns:92px minmax(0,1fr);align-items:center;gap:8px;margin:6px 0}
+.f>span:first-child{color:var(--mute);font-size:13px}
+.inp{display:flex;align-items:center;gap:6px}
+.inp input[type=number]{padding:6px 4px}
+.inp em{font-style:normal;color:var(--mute);font-size:12px;min-width:20px}
+.chk{display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:var(--panel);padding:5px 10px;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.addgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.addgrid .btn{justify-content:flex-start}
+
+.list{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:4px}
+.list li{display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:8px;padding:2px 2px 2px 8px;background:var(--panel)}
+.list li.on{border-color:var(--accent);background:var(--accent-soft)}
+.list li>button.name{flex:1;text-align:left;border:0;background:none;padding:6px 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.list li .mini{border:0;background:none;padding:6px;border-radius:6px;color:var(--mute);line-height:0}
+.list li .mini:hover{background:var(--panel2);color:var(--ink)}
+
+.stage{display:flex;flex-direction:column;min-width:0;min-height:0}
+.stagebar{display:flex;gap:12px;align-items:center;padding:8px 12px;flex-wrap:wrap;color:var(--mute);font-size:13px}
+.stagebar label{display:flex;align-items:center;gap:6px;cursor:pointer}
+.viewport{flex:1;overflow:auto;display:flex;min-height:260px;background:
+  radial-gradient(circle,var(--line) 1px,transparent 1.5px) 0 0/18px 18px}
+.sheet{margin:auto;position:relative;padding:30px 30px 34px 30px;width:max-content}
+.sheet canvas.ruler{position:absolute;pointer-events:none}
+#paper{position:relative;background:#fff;border-radius:4px;box-shadow:0 1px 2px rgba(10,20,40,.25),0 12px 28px -10px rgba(10,20,40,.35);touch-action:none;cursor:default}
+#cv{display:block;width:100%;height:100%;border-radius:4px}
+#sel{position:absolute;border:1.5px solid var(--accent);pointer-events:none;display:none;box-shadow:0 0 0 1px rgba(255,255,255,.7)}
+#hnd{position:absolute;right:-7px;bottom:-7px;width:14px;height:14px;background:var(--accent);border:2px solid #fff;border-radius:3px;pointer-events:auto;cursor:nwse-resize;touch-action:none}
+.rowbar{display:flex;gap:10px;align-items:center;justify-content:center;padding:8px;color:var(--mute)}
+
+dialog{border:1px solid var(--line);border-radius:14px;padding:0;background:var(--panel);color:var(--ink);width:min(560px,94vw);max-height:92dvh}
+dialog::backdrop{background:rgba(10,16,24,.55)}
+dialog .dhead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
+dialog .dhead h2{margin:0;font-size:16px}
+dialog .dbody{padding:12px 16px 16px;overflow:auto;max-height:calc(92dvh - 60px)}
+.status{display:flex;align-items:center;gap:8px;margin:8px 0}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;max-width:90vw;z-index:50;display:none}
+.toast.bad{background:var(--bad);color:#fff}
+.empty{color:var(--mute);padding:6px 0}
+
+@media (max-width:1000px){
+  .app{display:contents}
+  .top{order:0}
+  .stage{order:1;position:sticky;top:0;z-index:6;height:46dvh;flex:none;background:var(--bg);border-bottom:1px solid var(--line)}
+  .viewport{min-height:0}
+  .stagebar{padding:6px 12px;gap:8px 12px}
+  .meta{display:none}
+  .tabs{order:2;display:flex;gap:6px;padding:8px 12px;overflow:auto;background:var(--bg);position:sticky;top:46dvh;z-index:5}
+  .tabs button{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:7px 14px;white-space:nowrap}
+  .tabs button[aria-selected=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  #colL{order:3}#colR{order:4}
+  .col{overflow:visible;padding:0 12px 12px;gap:0}
+  .panel{display:none}
+  body[data-tab=label] .panel[data-tab=label],
+  body[data-tab=add] .panel[data-tab=add],
+  body[data-tab=props] .panel[data-tab=props],
+  body[data-tab=data] .panel[data-tab=data],
+  body[data-tab=tpl] .panel[data-tab=tpl]{display:block}
+}
+@media (prefers-reduced-motion:no-preference){
+  .btn{transition:background .12s,filter .12s}
+}
+</style>
+</head>
+<body data-tab="label">
+<header class="top">
+  <h1>PRINT ME</h1>
+  <span class="meta" id="sizeInfo"></span>
+  <div class="grow"></div>
+  <button class="btn icon" id="undo" aria-label="Annuler" title="Annuler (Ctrl+Z)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
+  <button class="btn icon" id="redo" aria-label="Rétablir" title="Rétablir (Ctrl+Y)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button>
+  <label class="copies">Copies <input id="copies" type="number" min="1" max="999" value="1" inputmode="numeric"></label>
+  <button class="btn" id="btnPrinter"><span class="dot" id="connDot"></span>Imprimante</button>
+  <button class="btn primary" id="btnPrint">Imprimer</button>
+</header>
+
+<nav class="tabs" id="tabs" role="tablist">
+  <button role="tab" data-tab="label" aria-selected="true">Étiquette</button>
+  <button role="tab" data-tab="add" aria-selected="false">Éléments</button>
+  <button role="tab" data-tab="props" aria-selected="false">Propriétés</button>
+  <button role="tab" data-tab="data" aria-selected="false">Données</button>
+  <button role="tab" data-tab="tpl" aria-selected="false">Modèles</button>
+</nav>
+
+<main class="app">
+  <aside class="col" id="colL">
+    <section class="panel" data-tab="label">
+      <h2>Étiquette</h2>
+      <label class="f"><span>Format</span><select id="preset"></select></label>
+      <div class="f"><span>Dimensions</span>
+        <span class="inp"><input id="lw" type="number" min="5" max="300" step="1" inputmode="decimal"><em>×</em><input id="lh" type="number" min="5" max="600" step="1" inputmode="decimal"><em>mm</em></span></div>
+      <div class="f"><span></span><button class="btn sm" id="swap" style="width:max-content">Pivoter le format</button></div>
+      <label class="chk"><input type="checkbox" id="fitEls"> Adapter le contenu au changement de format</label>
+      <label class="f"><span>Résolution</span><select id="dpi"><option value="203">203 dpi (8 points/mm)</option><option value="300">300 dpi (12 points/mm)</option></select></label>
+      <label class="f"><span>Papier</span><select id="ptype"><option value="auto">Auto (l'imprimante gère)</option><option value="gap">Étiquettes avec espace</option><option value="mark">Marque noire</option><option value="cont">Continu</option></select></label>
+      <label class="f" id="gapRow"><span>Espace</span><span class="inp"><input id="gap" type="number" min="0" max="20" step="0.5" inputmode="decimal"><em>mm</em></span></label>
+    </section>
+    <section class="panel" data-tab="add">
+      <h2>Ajouter</h2>
+      <div class="addgrid">
+        <button class="btn" data-add="text">Texte</button>
+        <button class="btn" data-add="barcode">Code-barres</button>
+        <button class="btn" data-add="qr">QR code</button>
+        <button class="btn" data-add="image">Image</button>
+        <button class="btn" data-add="rect">Rectangle</button>
+        <button class="btn" data-add="line">Ligne</button>
+      </div>
+      <h3>Éléments de l'étiquette</h3>
+      <ul class="list" id="elList"></ul>
+    </section>
+    <section class="panel" data-tab="tpl">
+      <h2>Modèles</h2>
+      <div id="builtin" class="list"></div>
+      <h3>Vos modèles</h3>
+      <ul class="list" id="savedList"></ul>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button class="btn sm" id="saveTpl">Enregistrer ce modèle</button>
+        <button class="btn sm" id="expTpl">Exporter</button>
+        <button class="btn sm" id="impTpl">Importer</button>
+        <input type="file" id="impFile" accept="application/json,.json" hidden>
+      </div>
+    </section>
+  </aside>
+
+  <section class="stage">
+    <div class="stagebar">
+      <span style="display:flex;gap:6px;align-items:center">
+        <button class="btn sm icon" id="zOut" aria-label="Zoom arrière">−</button>
+        <button class="btn sm" id="zFit">Ajuster</button>
+        <button class="btn sm icon" id="zIn" aria-label="Zoom avant">+</button>
+      </span>
+      <label><input type="checkbox" id="snap"> Aimanter à 0,5 mm</label>
+      <label><input type="checkbox" id="bw"> Aperçu noir et blanc</label>
+    </div>
+    <div class="viewport" id="viewport">
+      <div class="sheet" id="sheet">
+        <canvas class="ruler" id="rx" style="left:30px;top:8px"></canvas>
+        <canvas class="ruler" id="ry" style="left:8px;top:30px"></canvas>
+        <div id="paper"><canvas id="cv"></canvas><div id="sel"><i id="hnd"></i></div></div>
+      </div>
+    </div>
+    <div class="rowbar" id="rowbar" hidden>
+      <button class="btn sm icon" id="rPrev" aria-label="Ligne précédente">‹</button>
+      <span id="rowInfo"></span>
+      <button class="btn sm icon" id="rNext" aria-label="Ligne suivante">›</button>
+    </div>
+  </section>
+
+  <aside class="col" id="colR">
+    <section class="panel" data-tab="props">
+      <h2>Propriétés</h2>
+      <div id="props"></div>
+    </section>
+    <section class="panel" data-tab="data">
+      <h2>Données</h2>
+      <p class="hint">Écrivez <b>{{nom}}</b> dans un texte, un code-barres ou un QR code : le champ apparaît ici. Champs automatiques : {{date}}, {{heure}}, {{n}} (numéro de l'étiquette), {{nb}} (nombre d'étiquettes).</p>
+      <div id="vars"></div>
+      <h3>Lot depuis un tableau</h3>
+      <p class="hint">Collez des lignes depuis Excel ou un CSV. La première ligne contient les noms de colonnes.</p>
+      <textarea id="csv" rows="6" spellcheck="false" placeholder="nom;prix;reference&#10;Sac;24,90;3017620422003"></textarea>
+      <label class="chk"><input type="checkbox" id="useCsv"> Une étiquette par ligne</label>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn sm" id="csvHead">Insérer les colonnes</button>
+        <span class="hint" id="csvInfo"></span>
+      </div>
+    </section>
+  </aside>
+</main>
+
+<dialog id="dlg">
+  <div class="dhead"><h2>Imprimante</h2><button class="btn sm" id="dlgClose">Fermer</button></div>
+  <div class="dbody">
+    <label class="f"><span>Envoi</span><select id="mode">
+      <option value="browser">Navigateur (fenêtre d'impression)</option>
+      <option value="local">Direct (imprimante Windows)</option>
+      <option value="usb">USB direct</option>
+      <option value="serial">Port série / Bluetooth (PC)</option>
+      <option value="ble">Bluetooth basse consommation</option>
+    </select></label>
+    <p class="hint" id="modeHint"></p>
+    <div class="status" id="connRow"><span class="dot" id="connDot2"></span><span id="connText">Non connectée</span>
+      <span class="grow"></span><button class="btn sm" id="btnConnect">Connecter</button></div>
+    <div id="fileRow" hidden>
+      <label class="f"><span>File</span><select id="printerSel"></select></label>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn sm" id="btnJobs">Vérifier la file</button>
+        <button class="btn sm" id="btnUnblock">Débloquer la file</button>
+      </div>
+      <p class="hint" id="jobsInfo">Un travail resté « Retenu » bloque le port : plus rien ne sort tant qu'il n'est pas enlevé.</p>
+    </div>
+    <h3>Réglages d'impression</h3>
+    <label class="f"><span>Langage</span><select id="lang"><option value="tspl">TSPL — texte natif (étiquettes)</option><option value="tsplimg">TSPL — image (bitmap)</option><option value="zpl">ZPL (Zebra)</option><option value="escpos">ESC/POS (tickets)</option></select></label>
+    <label class="chk" id="nativeRow"><input type="checkbox" id="nativeTspl"> Rendu net — texte/barre/QR natifs (recommandé)</label>
+    <div class="f"><span></span><button class="btn sm" id="btnTestLang" style="width:max-content">Tester ce langage (1 étiquette)</button></div>
+    <label class="f"><span>Densité</span><span class="inp"><input id="density" type="number" min="0" max="15" step="1"><em>0 à 15</em></span></label>
+    <label class="f"><span>Vitesse</span><span class="inp"><input id="speed" type="number" min="1" max="10" step="1"><em>1 à 10</em></span></label>
+    <label class="f"><span>Sens</span><select id="direction"><option value="1">Normal</option><option value="0">Inversé</option></select></label>
+    <label class="f"><span>Noirceur</span><input id="threshold" type="range" min="60" max="230" step="5"></label>
+    <label class="chk"><input type="checkbox" id="dither"> Tramage des images (photos, logos en dégradé)</label>
+    <label class="chk"><input type="checkbox" id="invert"> Inverser noir et blanc (si l'impression sort négative)</label>
+    <label class="f"><span>Débit série</span><select id="baud"><option>9600</option><option>19200</option><option>38400</option><option>57600</option><option>115200</option></select></label>
+    <label class="f"><span>Paquets BLE</span><select id="chunk"><option value="20">20 octets (très compatible)</option><option value="100">100 octets</option><option value="180">180 octets</option></select></label>
+    <h3>Exports</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn sm" id="dlPng">Télécharger l'image (PNG)</button>
+      <button class="btn sm" id="dlCmd">Télécharger les commandes</button>
+    </div>
+    <p class="hint">Les commandes (.prn) peuvent être envoyées en impression brute depuis Windows.</p>
+  </div>
+</dialog>
+<div class="toast" id="toast" role="status"></div>
+<script>
+'use strict';
+/* ============ utilitaires ============ */
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const rnd=v=>Math.round(v*100)/100;
+const norm=k=>String(k).trim().toLowerCase();
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function h(tag,attrs={},...kids){
+  const e=document.createElement(tag);
+  for(const [k,v] of Object.entries(attrs||{})){
+    if(k==='class')e.className=v;
+    else if(k.startsWith('on'))e.addEventListener(k.slice(2),v);
+    else if(v===true)e.setAttribute(k,'');
+    else if(v!==false&&v!=null)e.setAttribute(k,v);
+  }
+  for(const c of kids.flat())if(c!=null)e.append(c);
+  return e;
+}
+let toastT;
+function toast(msg,bad){const t=$('#toast');t.textContent=msg;t.className='toast'+(bad?' bad':'');t.style.display='block';clearTimeout(toastT);toastT=setTimeout(()=>t.style.display='none',bad?6000:2600)}
+
+/* ============ polices ============ */
+const SYS_FONTS=['Arial','Verdana','Tahoma','Trebuchet MS','Georgia','Times New Roman','Courier New','Impact','Comic Sans MS'];
+const GOOGLE_FONTS=[['Roboto','400;700'],['Roboto Condensed','400;700'],['Roboto Mono','400;700'],['Open Sans','400;700'],['Lato','400;700'],['Montserrat','400;700'],['Poppins','400;700'],['Inter','400;700'],['DM Sans','400;700'],['Nunito','400;700'],['Raleway','400;700'],['Oswald','400;700'],['Barlow Condensed','400;700'],['Fira Sans Condensed','400;700'],['Bebas Neue',''],['Anton',''],['Archivo Black',''],['Playfair Display','400;700'],['Merriweather','400;700'],['Lora','400;700'],['Source Code Pro','400;700'],['Space Mono','400;700'],['Pacifico',''],['Caveat','400;700'],['Permanent Marker',''],['Dancing Script','400;700']];
+const FONT_NAMES=[...SYS_FONTS,...GOOGLE_FONTS.map(g=>g[0])];
+for(const [n,w] of GOOGLE_FONTS){
+  const l=document.createElement('link');l.rel='stylesheet';
+  l.href='https://fonts.googleapis.com/css2?family='+n.replace(/ /g,'+')+(w?':wght@'+w:'')+'&display=swap';
+  document.head.appendChild(l);
+}
+function fontStack(n){
+  let g='sans-serif';
+  if(/Mono|Code|Courier/.test(n))g='monospace';
+  else if(/Georgia|Times|Playfair|Merriweather|Lora/.test(n))g='serif';
+  else if(/Pacifico|Caveat|Marker|Dancing/.test(n))g='cursive';
+  return `"${n}", ${g}`;
+}
+const fontReq=new Set();
+function ensureFont(el){
+  const key=`${el.font}|${el.bold?1:0}|${el.italic?1:0}`;
+  if(fontReq.has(key))return Promise.resolve();
+  fontReq.add(key);
+  if(!document.fonts||!document.fonts.load)return Promise.resolve();
+  return document.fonts.load(`${el.italic?'italic ':''}${el.bold?700:400} 16px "${el.font}"`).then(()=>requestRender()).catch(()=>{});
+}
+
+/* ============ état ============ */
+const PRESETS=[['Pass-Service / Colissimo 100 × 150 mm',100,150],['Expédition 4 × 6 pouces (102 × 152 mm)',102,152],['40 × 60 mm',40,60],['30 × 20 mm',30,20],['40 × 30 mm',40,30],['50 × 30 mm',50,30],['50 × 80 mm',50,80],['60 × 40 mm',60,40],['60 × 80 mm',60,80],['70 × 50 mm',70,50],['100 × 50 mm',100,50],['100 × 100 mm',100,100],['100 × 150 mm',100,150],['— DYMO —',-1,-1],['DYMO Adresse 89 × 36 mm',89,36],['DYMO Grande adresse 89 × 36 mm',89,36],['DYMO Expédition 102 × 152 mm',102,152],['DYMO Badge / porte-nom 54 × 101 mm',54,101],['DYMO Retour 25 × 54 mm',25,54],['DYMO Dossier / classeur 9 × 50 mm',9,50],['DYMO Disque / support 54 × 70 mm',54,70],['— Autres formats —',-1,-1],['Badge 60 × 90 mm',60,90],['Étiquette prix 40 × 30 mm',40,30],['Bracelet / tour 25 × 250 mm',25,250],['Grand colis 150 × 100 mm',150,100]];
+const S={
+  label:{w:40,h:60,dpi:203,gap:2,paper:'auto'},
+  els:[],sel:null,nextId:1,
+  vars:{},csv:'',useCsv:false,rowIdx:0,copies:1,
+  zoom:8,auto:true,
+  prefs:{mode:'local',lang:'tspl',nativeTspl:true,fitEls:true,density:8,speed:4,direction:1,threshold:160,dither:false,invert:false,baud:115200,chunk:20,snap:true,bw:false,printerName:''}
+};
+const TYPE_NAME={text:'Texte',barcode:'Code-barres',qr:'QR code',image:'Image',rect:'Rectangle',line:'Ligne'};
+function def(type){
+  const base={text:{x:2,y:2,w:36,text:'Votre texte',font:'Arial',pt:12,bold:false,italic:false,align:'left',ls:1.15,fit:false,inv:false,rot:0},
+    barcode:{x:2,y:2,w:34,h:14,text:'123456789012',show:true,rot:0},
+    qr:{x:2,y:2,w:20,h:20,text:'https://',ecc:'M',rot:0},
+    image:{x:2,y:2,w:20,h:20,src:'',lock:true,ratio:1,rot:0},
+    rect:{x:2,y:2,w:20,h:10,thick:0.4,fill:false},
+    line:{x:2,y:2,w:30,h:0.5,rot:0}};
+  return {type,...base[type]};
+}
+function mk(type,props){return {...def(type),...props}}
+const selEl=()=>S.els.find(e=>e.id===S.sel)||null;
+
+/* ============ données variables ============ */
+const MEAS=document.createElement('canvas').getContext('2d');
+let csvCache={t:null,v:{cols:[],rows:[]}};
+function splitLine(l,d){const out=[];let cur='',q=false;for(let i=0;i<l.length;i++){const c=l[i];if(q){if(c==='"'){if(l[i+1]==='"'){cur+='"';i++}else q=false}else cur+=c}else if(c==='"')q=true;else if(c===d){out.push(cur);cur=''}else cur+=c}out.push(cur);return out}
+function parseCSV(t){
+  if(csvCache.t===t)return csvCache.v;
+  const lines=t.replace(/\r/g,'').split('\n').filter(l=>l.trim()!=='');
+  let v={cols:[],rows:[]};
+  if(lines.length){
+    let d=';',best=-1;for(const c of [';','\t',',']){const n=lines[0].split(c).length;if(n>best){best=n;d=c}}
+    const cols=splitLine(lines[0],d).map(norm);
+    const rows=lines.slice(1).map(l=>{const p=splitLine(l,d);const o={};cols.forEach((c,i)=>o[c]=(p[i]||'').trim());return o});
+    v={cols,rows};
+  }
+  csvCache={t,v};return v;
+}
+const csvRows=()=>S.useCsv?parseCSV(S.csv).rows:[];
+const rowCount=()=>Math.max(1,csvRows().length);
+function rowFor(i){
+  const d=new Date(),p=n=>String(n).padStart(2,'0');
+  const rows=csvRows();
+  const csv=rows.length?rows[clamp(i,0,rows.length-1)]:{};
+  return {date:`${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()}`,heure:`${p(d.getHours())}:${p(d.getMinutes())}`,n:String(i+1),nb:String(rowCount()),...S.vars,...csv};
+}
+function resolve(str,row,keep){
+  return String(str||'').replace(/\{\{\s*([^{}]+?)\s*\}\}/g,(m,k)=>{
+    const v=row[norm(k)];
+    if(v===undefined||v==='')return keep?m:'';
+    return String(v).replace(/\\n/g,'\n');
+  });
+}
+const BUILTIN_VARS=['date','heure','n','nb'];
+function detectVars(){
+  const seen=new Map();
+  for(const el of S.els){
+    if(el.type!=='text'&&el.type!=='barcode'&&el.type!=='qr')continue;
+    for(const m of String(el.text||'').matchAll(/\{\{\s*([^{}]+?)\s*\}\}/g)){
+      const k=norm(m[1]);
+      if(!BUILTIN_VARS.includes(k)&&!seen.has(k))seen.set(k,m[1].trim());
+    }
+  }
+  return [...seen].map(([key,label])=>({key,label}));
+}
+
+/* ============ Code 128 ============ */
+const C128=['212222','222122','222221','121223','121322','131222','122213','122312','132212','221213','221312','231212','112232','122132','122231','113222','123122','123221','223211','221132','221231','213212','223112','312131','311222','321122','321221','312212','322112','322211','212123','212321','232121','111323','131123','131321','112313','132113','132311','211313','231113','231311','112133','112331','132131','113123','113321','133121','313121','211331','231131','213113','213311','213131','311123','311321','331121','312113','312311','332111','314111','221411','431111','111224','111422','121124','121421','141122','141221','112214','112412','122114','122411','142112','142211','241211','221114','413111','241112','134111','111242','121142','121241','114212','124112','124211','411212','421112','421211','212141','214121','412121','111143','111341','131141','114113','114311','411113','411311','113141','114131','311141','411131','211412','211214','211232','2331112'];
+function code128(str){
+  const v=[];
+  if(/^\d{4,}$/.test(str)){
+    if(str.length%2===0){v.push(105);for(let i=0;i<str.length;i+=2)v.push(+str.substr(i,2))}
+    else{v.push(104,str.charCodeAt(0)-32,99);for(let i=1;i<str.length;i+=2)v.push(+str.substr(i,2))}
+  }else{
+    v.push(104);
+    for(const ch of str){let c=ch.charCodeAt(0);if(c<32||c>126)c=63;v.push(c-32)}
+  }
+  let sum=v[0];for(let i=1;i<v.length;i++)sum+=v[i]*i;
+  v.push(sum%103,106);
+  return v.map(x=>C128[x]).join('');
+}
+
+/* ============ rendu de l'étiquette ============ */
+const IMGS={};
+function getImg(src){
+  if(!src)return null;
+  if(!IMGS[src]){const im=new Image();im.onload=()=>requestRender();im.src=src;IMGS[src]=im}
+  return IMGS[src];
+}
+function wrapText(text,avail){
+  const out=[];
+  for(const para of text.split('\n')){
+    if(para===''){out.push('');continue}
+    let line='';
+    for(let word of para.split(' ')){
+      const test=line?line+' '+word:word;
+      if(MEAS.measureText(test).width<=avail){line=test;continue}
+      if(line){out.push(line);line=''}
+      while(MEAS.measureText(word).width>avail&&word.length>1){
+        let k=word.length-1;
+        while(k>1&&MEAS.measureText(word.slice(0,k)).width>avail)k--;
+        out.push(word.slice(0,k));word=word.slice(k);
+      }
+      line=word;
+    }
+    out.push(line);
+  }
+  return out;
+}
+function layoutText(el,row,dpmm,keep){
+  const text=resolve(el.text,row,keep);
+  const pad=el.inv?0.7:0;
+  const avail=Math.max(1,(el.w-2*pad)*dpmm);
+  const fam=fontStack(el.font),style=(el.italic?'italic ':'')+(el.bold?'700 ':'400 ');
+  ensureFont(el);
+  let pt=el.pt,px,lines;
+  const setFont=p=>{px=p*25.4/72*dpmm;MEAS.font=`${style}${px}px ${fam}`};
+  if(el.fit){
+    const src=text.split('\n');
+    for(;;){setFont(pt);const mx=Math.max(...src.map(s=>MEAS.measureText(s).width));if(mx<=avail||pt<=4)break;pt=Math.max(4,pt-0.5)}
+    lines=src;
+  }else{setFont(pt);lines=wrapText(text,avail)}
+  const lineH=px*(el.ls||1.15);
+  return {lines,px,lineH,pad,font:`${style}${px}px ${fam}`,hmm:(lines.length*lineH)/dpmm+2*pad};
+}
+function placeholder(ctx,W,H,label){
+  ctx.save();ctx.strokeStyle='#888';ctx.setLineDash([6,4]);ctx.lineWidth=1;ctx.strokeRect(.5,.5,W-1,H-1);
+  ctx.fillStyle='#888';ctx.font='12px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(label,W/2,H/2);ctx.restore();
+}
+function ditherImg(el,im,W,H){
+  const th=S.prefs.threshold,key=`${el.src.length}|${W}|${H}|${th}`;
+  if(el._dc&&el._dc.key===key)return el._dc.canvas;
+  const c=document.createElement('canvas');c.width=Math.max(1,W);c.height=Math.max(1,H);
+  const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);
+  const id=x.getImageData(0,0,c.width,c.height),d=id.data,w=c.width,hh=c.height;
+  const L=new Float32Array(w*hh);
+  for(let i=0;i<w*hh;i++)L[i]=0.299*d[i*4]+0.587*d[i*4+1]+0.114*d[i*4+2];
+  for(let y=0;y<hh;y++)for(let xx=0;xx<w;xx++){
+    const i=y*w+xx,o=L[i],n=o<th?0:255,e=o-n;L[i]=n;
+    if(xx+1<w)L[i+1]+=e*7/16;
+    if(y+1<hh){if(xx>0)L[i+w-1]+=e*3/16;L[i+w]+=e*5/16;if(xx+1<w)L[i+w+1]+=e/16}
+  }
+  for(let i=0;i<w*hh;i++){d[i*4]=d[i*4+1]=d[i*4+2]=L[i];d[i*4+3]=255}
+  x.putImageData(id,0,0);
+  el._dc={key,canvas:c};return c;
+}
+function drawEl(ctx,el,row,dpmm,opts){
+  const P=v=>v*dpmm;
+  const rot=el.type==='rect'?0:(el.rot||0),swap=rot===90||rot===270;
+  let lw=el.w,lh=el.h,lay=null;
+  if(el.type==='text'){lay=layoutText(el,row,dpmm,opts.preview);lh=lay.hmm}
+  const vw=swap?lh:lw,vh=swap?lw:lh;
+  el._b={x:el.x,y:el.y,w:vw,h:vh};
+  ctx.save();
+  ctx.translate(P(el.x+vw/2),P(el.y+vh/2));
+  ctx.rotate(rot*Math.PI/180);
+  ctx.translate(-P(lw)/2,-P(lh)/2);
+  const W=P(lw),H=P(lh);
+  ctx.fillStyle='#000';ctx.strokeStyle='#000';
+  switch(el.type){
+    case 'text':{
+      const pad=P(lay.pad);
+      if(el.inv){ctx.fillRect(0,0,W,H);ctx.fillStyle='#fff'}
+      ctx.font=lay.font;ctx.textBaseline='middle';ctx.textAlign=el.align;
+      const tx=el.align==='center'?W/2:el.align==='right'?W-pad:pad;
+      lay.lines.forEach((ln,i)=>ctx.fillText(ln,tx,pad+i*lay.lineH+lay.lineH/2));
+      break}
+    case 'barcode':{
+      const data=resolve(el.text,row,opts.preview);
+      if(!data){if(opts.preview)placeholder(ctx,W,H,'Code-barres vide');break}
+      const pat=code128(data),mods=[...pat].reduce((a,c)=>a+ +c,0)+20;
+      let mpx=Math.floor(W/mods);if(mpx<1)mpx=W/mods;
+      let x=Math.round((W-mods*mpx)/2+10*mpx);
+      const txtH=el.show?P(3.2):0,barH=H-txtH;
+      let bar=true;
+      for(const c of pat){const w=+c*mpx;if(bar)ctx.fillRect(x,0,w,barH);x+=w;bar=!bar}
+      if(el.show){ctx.font=`${P(2.6)}px Arial, sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(data,W/2,barH+txtH/2+P(0.1))}
+      break}
+    case 'qr':{
+      const data=resolve(el.text,row,opts.preview);
+      if(!data){if(opts.preview)placeholder(ctx,W,H,'QR vide');break}
+      if(typeof qrcode!=='function'){placeholder(ctx,W,H,'QR indisponible hors ligne');break}
+      try{
+        if(qrcode.stringToBytesFuncs&&qrcode.stringToBytesFuncs['UTF-8'])qrcode.stringToBytes=qrcode.stringToBytesFuncs['UTF-8'];
+        const q=qrcode(0,el.ecc||'M');q.addData(data);q.make();
+        const n=q.getModuleCount(),size=Math.min(W,H);
+        let m=Math.floor(size/n);if(m<1)m=size/n;
+        const ox=Math.round((W-n*m)/2),oy=Math.round((H-n*m)/2);
+        for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(q.isDark(r,c))ctx.fillRect(ox+c*m,oy+r*m,Math.ceil(m),Math.ceil(m));
+      }catch(e){placeholder(ctx,W,H,'Texte trop long')}
+      break}
+    case 'image':{
+      const im=getImg(el.src);
+      if(!im||!im.complete||!im.naturalWidth){if(opts.preview)placeholder(ctx,W,H,'Image');break}
+      if(S.prefs.dither)ctx.drawImage(ditherImg(el,im,Math.round(W),Math.round(H)),0,0,W,H);
+      else ctx.drawImage(im,0,0,W,H);
+      break}
+    case 'rect':{
+      if(el.fill)ctx.fillRect(0,0,W,H);
+      else{const t=Math.max(1,Math.round(P(el.thick||0.4)));ctx.fillRect(0,0,W,t);ctx.fillRect(0,H-t,W,t);ctx.fillRect(0,0,t,H);ctx.fillRect(W-t,0,t,H)}
+      break}
+    case 'line':{ctx.fillRect(0,0,W,Math.max(1,H));break}
+  }
+  ctx.restore();
+}
+function render(canvas,row,opts){
+  const dpmm=S.label.dpi/25.4;
+  canvas.width=Math.round(S.label.w*dpmm);canvas.height=Math.round(S.label.h*dpmm);
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+  for(const el of S.els)drawEl(ctx,el,row,dpmm,opts);
+}
+function applyBW(canvas){
+  const ctx=canvas.getContext('2d'),id=ctx.getImageData(0,0,canvas.width,canvas.height),d=id.data,th=S.prefs.threshold;
+  for(let i=0;i<d.length;i+=4){const l=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];d[i]=d[i+1]=d[i+2]=l<th?0:255}
+  ctx.putImageData(id,0,0);
+}
+
+/* ============ affichage ============ */
+let raf=0;
+function requestRender(){if(raf)return;raf=requestAnimationFrame(()=>{raf=0;draw()})}
+function draw(){
+  const cv=$('#cv');
+  render(cv,rowFor(S.rowIdx),{preview:true});
+  if(S.prefs.bw)applyBW(cv);
+  applyZoom();updateSel();
+}
+function applyZoom(){
+  const z=S.zoom,p=$('#paper');
+  p.style.width=S.label.w*z+'px';p.style.height=S.label.h*z+'px';
+  $('#sizeInfo').textContent=`${S.label.w} × ${S.label.h} mm · ${S.label.dpi} dpi · ${Math.round(S.label.w*S.label.dpi/25.4)} × ${Math.round(S.label.h*S.label.dpi/25.4)} points`;
+  drawRulers();
+}
+function drawRulers(){
+  const z=S.zoom,dpr=window.devicePixelRatio||1,cs=getComputedStyle(document.body);
+  const ink=cs.getPropertyValue('--mute').trim()||'#586676';
+  for(const [id,horiz] of [['#rx',true],['#ry',false]]){
+    const c=$(id),len=(horiz?S.label.w:S.label.h)*z,thick=16;
+    c.style.width=(horiz?len:thick)+'px';c.style.height=(horiz?thick:len)+'px';
+    c.width=Math.round((horiz?len:thick)*dpr);c.height=Math.round((horiz?thick:len)*dpr);
+    const x=c.getContext('2d');x.scale(dpr,dpr);x.strokeStyle=ink;x.fillStyle=ink;x.lineWidth=1;x.font='10px sans-serif';
+    const step=z>=6?1:z>=3?5:10,lab=z>=12?5:10;
+    for(let mmv=0;mmv<=(horiz?S.label.w:S.label.h);mmv+=step){
+      const p=mmv*z+.5,big=mmv%10===0,mid=mmv%5===0,l=big?10:mid?7:4;
+      x.beginPath();
+      if(horiz){x.moveTo(p,thick);x.lineTo(p,thick-l)}else{x.moveTo(thick,p);x.lineTo(thick-l,p)}
+      x.stroke();
+      if(mmv%lab===0&&mmv>0&&p+8<len){
+        if(horiz){x.textAlign='center';x.textBaseline='top';x.fillText(mmv,p,0)}
+        else{x.save();x.translate(0,p);x.rotate(-Math.PI/2);x.textAlign='center';x.textBaseline='top';x.fillText(mmv,0,0);x.restore()}
+      }
+    }
+  }
+}
+function fitZoom(){
+  const vp=$('#viewport'),W=S.label.w,H=S.label.h;
+  const z=Math.min((vp.clientWidth-80)/W,(vp.clientHeight-90)/H);
+  S.zoom=clamp(z,2,20);
+}
+function setZoom(z,manual){S.zoom=clamp(z,2,24);if(manual)S.auto=false;applyZoom();updateSel()}
+function hitBox(el){
+  const b=el._b||{x:el.x,y:el.y,w:el.w,h:el.h},m=2.5;
+  const w=Math.max(b.w,m),hh=Math.max(b.h,m);
+  return {x:b.x-(w-b.w)/2,y:b.y-(hh-b.h)/2,w,h:hh};
+}
+function updateSel(){
+  const el=selEl(),s=$('#sel');
+  if(!el||!el._b){s.style.display='none';return}
+  const b=hitBox(el),z=S.zoom;
+  s.style.display='block';s.style.left=b.x*z+'px';s.style.top=b.y*z+'px';s.style.width=b.w*z+'px';s.style.height=b.h*z+'px';
+}
+
+/* ============ historique et sauvegarde ============ */
+let hist=[],hi=-1;
+const strip=(k,v)=>k[0]==='_'?undefined:v;
+const serialize=()=>JSON.stringify({label:S.label,els:S.els},strip);
+function snapshot(){
+  const s=serialize();
+  if(hist[hi]===s)return;
+  hist=hist.slice(0,hi+1);hist.push(s);if(hist.length>60)hist.shift();hi=hist.length-1;
+  save();refreshUndo();
+}
+function restore(s){
+  const o=JSON.parse(s);S.label=o.label;S.els=o.els;
+  if(!selEl())S.sel=null;
+  syncLabelUI();buildProps();renderList();renderData();
+  if(S.auto)fitZoom();draw();
+}
+function undo(){if(hi>0){hi--;restore(hist[hi]);save();refreshUndo()}}
+function redo(){if(hi<hist.length-1){hi++;restore(hist[hi]);save();refreshUndo()}}
+function refreshUndo(){$('#undo').disabled=hi<=0;$('#redo').disabled=hi>=hist.length-1}
+function save(){
+  try{localStorage.setItem('etiq.design',JSON.stringify({label:S.label,els:S.els,nextId:S.nextId,vars:S.vars,csv:S.csv,useCsv:S.useCsv,copies:S.copies},strip))}
+  catch(e){toast('Sauvegarde automatique impossible (espace plein ?)',true)}
+}
+function savePrefs(){try{localStorage.setItem('etiq.prefs',JSON.stringify(S.prefs))}catch(e){}}
+function loadAll(){
+  try{const p=JSON.parse(localStorage.getItem('etiq.prefs')||'null');if(p)Object.assign(S.prefs,p)}catch(e){}
+  if(['usb','serial','ble'].includes(S.prefs.mode)){S.prefs.mode='local';try{localStorage.setItem('etiq.prefs',JSON.stringify(S.prefs))}catch(e){}}
+  // Force bons réglages par défaut pour éviter l'impression en mode bitmap
+  if(!S.prefs.lang) S.prefs.lang='tspl';
+  if(S.prefs.lang==='tspl') S.prefs.nativeTspl = true;
+  try{localStorage.setItem('etiq.prefs',JSON.stringify(S.prefs))}catch(e){}
+  try{
+    const d=JSON.parse(localStorage.getItem('etiq.design')||'null');
+    if(d&&d.els){S.label=d.label;S.els=d.els;S.nextId=d.nextId||100;S.vars=d.vars||{};S.csv=d.csv||'';S.useCsv=!!d.useCsv;S.copies=d.copies||1;return true}
+  }catch(e){}
+  return false;
+}
+
+/* ============ modèles ============ */
+const TEMPLATES={
+  passservice:{name:'Pass-Service · Colissimo suivi 100 × 150 (défaut)',w:100,h:150,vars:{expediteur:'Pass-Service\nLibreville, Gabon',destinataire:'NGOUA APERANO\nMOUGUISSI',suivi:'6A12345678901'},els:[
+    mk('text',{x:4,y:5,w:92,text:'PASS-SERVICE',font:'Montserrat',pt:20,bold:true,align:'center'}),
+    mk('line',{x:4,y:14,w:92,h:0.8}),
+    mk('text',{x:4,y:16,w:92,text:'De : {{expediteur}}',font:'Roboto',pt:10}),
+    mk('line',{x:4,y:25,w:92,h:0.8}),
+    mk('text',{x:4,y:27,w:92,text:'Destinataire',font:'Roboto',pt:10,italic:true}),
+    mk('text',{x:4,y:33,w:92,text:'{{destinataire}}',font:'Montserrat',pt:18,bold:true}),
+    mk('line',{x:4,y:78,w:92,h:0.8}),
+    mk('text',{x:4,y:80,w:92,text:'NUMERO DE SUIVI',font:'Roboto',pt:11,bold:true}),
+    mk('barcode',{x:4,y:86,w:92,h:30,text:'{{suivi}}',show:false}),
+    mk('text',{x:4,y:118,w:92,text:'{{suivi}}',font:'Roboto Mono',pt:16,bold:true,align:'center'}),
+    mk('line',{x:4,y:127,w:92,h:0.8}),
+    mk('text',{x:4,y:130,w:92,text:"MBOLO, PASS-SERVICE VOUS REMERCIE DE LA CONFIANCE. GABON D'ABORD",font:'Roboto',pt:11,bold:true,align:'center'})]},
+  vierge:{name:'Étiquette libre 40 × 60',w:40,h:60,vars:{},els:[]},
+  produit:{name:'Étiquette produit 40 × 60',w:40,h:60,vars:{nom:'Sac en cuir',description:'Fait main, coloris noir',prix:'24,90',reference:'3017620422003'},els:[
+    mk('text',{x:2,y:3,w:36,text:'{{nom}}',font:'Montserrat',pt:14,bold:true}),
+    mk('text',{x:2,y:14,w:36,text:'{{description}}',font:'Roboto',pt:8}),
+    mk('line',{x:2,y:26,w:36,h:0.4}),
+    mk('text',{x:2,y:28,w:36,text:'{{prix}} €',font:'Oswald',pt:28,bold:true,fit:true}),
+    mk('barcode',{x:2,y:42,w:36,h:15,text:'{{reference}}'})]},
+  vinted:{name:'Bon de commande Vinted 40 × 60',w:40,h:60,vars:{commande:'V-10452',client:'Marie Dupont',articles:'1 x Sac en cuir',montant:'24,90 €',suivi:'6A12345678901'},els:[
+    mk('text',{x:2,y:2,w:36,text:'Bon de commande',font:'Montserrat',pt:11,bold:true,align:'center',inv:true}),
+    mk('text',{x:2,y:9,w:36,text:'Vinted · N° {{commande}}',font:'Roboto Mono',pt:9,bold:true}),
+    mk('text',{x:2,y:15,w:36,text:'Acheteur : {{client}}',font:'Roboto',pt:9}),
+    mk('line',{x:2,y:21,w:36,h:0.4}),
+    mk('text',{x:2,y:23,w:36,text:'{{articles}}',font:'Roboto',pt:9}),
+    mk('text',{x:2,y:31,w:36,text:'Total : {{montant}}',font:'Roboto',pt:11,bold:true}),
+    mk('text',{x:2,y:37,w:36,text:'{{date}}',font:'Roboto',pt:8}),
+    mk('barcode',{x:2,y:42,w:36,h:15,text:'{{suivi}}'})]},
+  colissimo:{name:'Colissimo 100 × 150',w:100,h:150,vars:{expediteur:'Pass-Service\\n12 rue des Lilas\\n75000 Paris',destinataire:'Marie Dupont\\n5 avenue du Port\\n33000 Bordeaux',suivi:'6A12345678901',poids:'1,2',commande:'A-10452'},els:[
+    mk('text',{x:4,y:4,w:92,text:'Expéditeur',font:'Roboto',pt:8,italic:true}),
+    mk('text',{x:4,y:9,w:92,text:'{{expediteur}}',font:'Roboto',pt:10}),
+    mk('line',{x:4,y:30,w:92,h:0.6}),
+    mk('text',{x:4,y:34,w:92,text:'Destinataire',font:'Roboto',pt:8,italic:true}),
+    mk('text',{x:4,y:40,w:92,text:'{{destinataire}}',font:'Montserrat',pt:20,bold:true}),
+    mk('line',{x:4,y:92,w:92,h:0.6}),
+    mk('barcode',{x:4,y:97,w:62,h:28,text:'{{suivi}}'}),
+    mk('qr',{x:72,y:97,w:24,h:24,text:'{{suivi}}'}),
+    mk('text',{x:4,y:130,w:92,text:'Poids : {{poids}} kg',font:'Roboto',pt:11}),
+    mk('text',{x:4,y:138,w:92,text:'Réf. {{commande}}',font:'Roboto',pt:11})]},
+  courrier:{name:'Courrier / adresse 40 × 60',w:40,h:60,vars:{destinataire:'Marie Dupont',adresse:'5 avenue du Port\\n33000 Bordeaux',expediteur:'Pass-Service',reference:'C-2026-001'},els:[
+    mk('text',{x:2,y:2,w:36,text:'À',font:'Roboto',pt:8,italic:true}),
+    mk('text',{x:2,y:6,w:36,text:'{{destinataire}}',font:'Montserrat',pt:13,bold:true}),
+    mk('text',{x:2,y:13,w:36,text:'{{adresse}}',font:'Roboto',pt:10}),
+    mk('line',{x:2,y:28,w:36,h:0.4}),
+    mk('text',{x:2,y:30,w:36,text:'De : {{expediteur}}',font:'Roboto',pt:8}),
+    mk('barcode',{x:2,y:42,w:36,h:15,text:'{{reference}}'})]},
+  prix:{name:'Prix étagère 40 × 30',w:40,h:30,vars:{nom:'Huile d\'olive 1 L',prix:'8,50',reference:'3017620422003'},els:[
+    mk('text',{x:2,y:2,w:36,text:'{{nom}}',font:'Roboto',pt:9,bold:true,fit:true,align:'center'}),
+    mk('text',{x:2,y:7,w:36,text:'{{prix}} €',font:'Anton',pt:30,fit:true,align:'center'}),
+    mk('barcode',{x:4,y:19.5,w:32,h:9,text:'{{reference}}'})]},
+  commande:{name:'Bon de commande 60 × 80',w:60,h:80,vars:{commande:'A-10452',client:'Marie Dupont',telephone:'06 12 34 56 78',articles:'2 x Sac en cuir\\n1 x Ceinture',montant:'74,90 €'},els:[
+    mk('text',{x:2,y:2,w:56,text:'Bon de commande',font:'Montserrat',pt:12,bold:true,align:'center',inv:true}),
+    mk('text',{x:2,y:12,w:56,text:'N° {{commande}}',font:'Roboto Mono',pt:15,bold:true}),
+    mk('text',{x:2,y:20,w:56,text:'Client : {{client}}',font:'Roboto',pt:10}),
+    mk('text',{x:2,y:26,w:56,text:'Tél : {{telephone}}',font:'Roboto',pt:10}),
+    mk('text',{x:2,y:32,w:56,text:'Date : {{date}}',font:'Roboto',pt:9}),
+    mk('line',{x:2,y:38,w:56,h:0.4}),
+    mk('text',{x:2,y:40,w:56,text:'{{articles}}',font:'Roboto',pt:9}),
+    mk('qr',{x:40,y:58,w:18,h:18,text:'{{commande}}'}),
+    mk('text',{x:2,y:62,w:36,text:'Total : {{montant}}',font:'Roboto',pt:12,bold:true})]},
+  colis:{name:'Colis 100 × 150 (générique)',w:100,h:150,vars:{expediteur:'Ma Boutique\\n12 rue des Lilas\\n75000 Paris',destinataire:'Marie Dupont\\n5 avenue du Port\\n33000 Bordeaux',suivi:'6A12345678901',poids:'1,2',commande:'A-10452'},els:[
+    mk('text',{x:4,y:4,w:92,text:'Expéditeur',font:'Roboto',pt:8,italic:true}),
+    mk('text',{x:4,y:9,w:92,text:'{{expediteur}}',font:'Roboto',pt:10}),
+    mk('line',{x:4,y:30,w:92,h:0.6}),
+    mk('text',{x:4,y:34,w:92,text:'Destinataire',font:'Roboto',pt:8,italic:true}),
+    mk('text',{x:4,y:40,w:92,text:'{{destinataire}}',font:'Montserrat',pt:20,bold:true}),
+    mk('line',{x:4,y:92,w:92,h:0.6}),
+    mk('barcode',{x:4,y:97,w:62,h:28,text:'{{suivi}}'}),
+    mk('qr',{x:72,y:97,w:24,h:24,text:'{{suivi}}'}),
+    mk('text',{x:4,y:130,w:92,text:'Poids : {{poids}} kg',font:'Roboto',pt:11}),
+    mk('text',{x:4,y:138,w:92,text:'Réf. {{commande}}',font:'Roboto',pt:11})]},
+  dymoadresse:{name:'DYMO · Adresse 89 × 36',w:89,h:36,vars:{destinataire:'Marie Dupont',adresse:'5 avenue du Port\\n33000 Bordeaux',expediteur:'Pass-Service'},els:[
+    mk('text',{x:2,y:2,w:85,text:'{{destinataire}}',font:'Arial',pt:14,bold:true}),
+    mk('text',{x:2,y:9,w:85,text:'{{adresse}}',font:'Arial',pt:11}),
+    mk('line',{x:2,y:26,w:85,h:0.4}),
+    mk('text',{x:2,y:27.5,w:85,text:'De : {{expediteur}}',font:'Arial',pt:8,italic:true})]},
+  dymoexpedition:{name:'DYMO · Expédition 102 × 152',w:102,h:152,vars:{expediteur:'Pass-Service\\n12 rue des Lilas\\n75000 Paris',destinataire:'Marie Dupont\\n5 avenue du Port\\n33000 Bordeaux',suivi:'6A12345678901',poids:'1,2'},els:[
+    mk('text',{x:4,y:4,w:94,text:'EXPÉDITEUR',font:'Arial',pt:9,italic:true}),
+    mk('text',{x:4,y:9,w:94,text:'{{expediteur}}',font:'Arial',pt:11}),
+    mk('line',{x:4,y:32,w:94,h:0.6}),
+    mk('text',{x:4,y:36,w:94,text:'DESTINATAIRE',font:'Arial',pt:9,italic:true}),
+    mk('text',{x:4,y:42,w:94,text:'{{destinataire}}',font:'Arial',pt:20,bold:true}),
+    mk('line',{x:4,y:96,w:94,h:0.6}),
+    mk('barcode',{x:4,y:101,w:66,h:30,text:'{{suivi}}'}),
+    mk('qr',{x:74,y:101,w:24,h:24,text:'{{suivi}}'}),
+    mk('text',{x:4,y:136,w:94,text:'Poids : {{poids}} kg',font:'Arial',pt:12,bold:true})]}
+};
+function applyTemplate(key){
+  const t=TEMPLATES[key];if(!t)return;
+  S.label={...S.label,w:t.w,h:t.h};
+  S.els=t.els.map(e=>({...e,id:S.nextId++}));
+  Object.assign(S.vars,t.vars);S.sel=null;S.rowIdx=0;
+  afterStructure();snapshot();
+}
+function savedTpl(){try{return JSON.parse(localStorage.getItem('etiq.templates')||'{}')}catch(e){return {}}}
+function putTpl(o){try{localStorage.setItem('etiq.templates',JSON.stringify(o))}catch(e){toast('Enregistrement impossible (espace plein ?)',true)}}
+function renderTemplates(){
+  const b=$('#builtin');b.innerHTML='';
+  for(const [k,t] of Object.entries(TEMPLATES))b.append(h('button',{class:'btn',style:'justify-content:flex-start',onclick:()=>{applyTemplate(k);toast('Modèle chargé');if(innerWidth<=1000)setTab('props')}},t.name));
+  const l=$('#savedList');l.innerHTML='';const s=savedTpl(),names=Object.keys(s);
+  if(!names.length)l.append(h('li',{class:'empty',style:'border:0'},'Aucun modèle enregistré.'));
+  for(const n of names){
+    l.append(h('li',{},
+      h('button',{class:'name',onclick:()=>{const t=s[n];S.label=t.label;S.els=t.els.map(e=>({...e,id:S.nextId++}));S.vars={...S.vars,...(t.vars||{})};S.sel=null;afterStructure();snapshot();toast('Modèle chargé')}},n),
+      h('button',{class:'mini','aria-label':'Supprimer '+n,onclick:()=>{if(confirm('Supprimer le modèle « '+n+' » ?')){const o=savedTpl();delete o[n];putTpl(o);renderTemplates()}}},'✕')));
+  }
+}
+function afterStructure(){
+  syncLabelUI();if(S.auto)fitZoom();buildProps();renderList();renderData();draw();
+}
+
+/* ============ éléments ============ */
+function addEl(type){
+  const e=def(type);e.id=S.nextId++;
+  const off=(S.els.length%6)*2;e.x+=off;e.y+=off;
+  if(type==='text'&&S.label.w<e.w+4)e.w=Math.max(8,S.label.w-4);
+  S.els.push(e);S.sel=e.id;
+  buildProps();renderList();draw();snapshot();
+  if(innerWidth<=1000)setTab('props');
+  if(type==='image')setTimeout(()=>{const f=$('#props input[type=file]');if(f)f.click()},50);
+}
+function select(id){S.sel=id;buildProps();renderList();updateSel()}
+function delEl(){const i=S.els.findIndex(e=>e.id===S.sel);if(i<0)return;S.els.splice(i,1);S.sel=null;buildProps();renderList();renderData();draw();snapshot()}
+function dupEl(){const e=selEl();if(!e)return;const c=JSON.parse(JSON.stringify(e,strip));c.id=S.nextId++;c.x+=2;c.y+=2;S.els.push(c);S.sel=c.id;buildProps();renderList();draw();snapshot()}
+function moveEl(id,d){const i=S.els.findIndex(e=>e.id===id),j=i+d;if(i<0||j<0||j>=S.els.length)return;[S.els[i],S.els[j]]=[S.els[j],S.els[i]];renderList();draw();snapshot()}
+function describe(e){
+  let s=TYPE_NAME[e.type];
+  if(e.text)s+=' : '+String(e.text).replace(/\n/g,' ').slice(0,22);
+  return s;
+}
+const ICON_UP='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>';
+const ICON_DN='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
+function renderList(){
+  const l=$('#elList');l.innerHTML='';
+  if(!S.els.length){l.append(h('li',{class:'empty',style:'border:0'},'Aucun élément. Ajoutez-en un ci-dessus.'));return}
+  for(const e of [...S.els].reverse()){
+    const up=h('button',{class:'mini','aria-label':'Mettre devant',onclick:()=>moveEl(e.id,1)}),dn=h('button',{class:'mini','aria-label':'Mettre derrière',onclick:()=>moveEl(e.id,-1)});
+    up.innerHTML=ICON_UP;dn.innerHTML=ICON_DN;
+    l.append(h('li',{class:e.id===S.sel?'on':''},h('button',{class:'name',onclick:()=>{select(e.id);if(innerWidth<=1000)setTab('props')}},describe(e)),up,dn));
+  }
+}
+
+/* ============ panneau de propriétés ============ */
+let propRefs=[];
+function syncProps(){propRefs.forEach(f=>f())}
+function fNum(el,label,key,o={}){
+  const {min=0,max=999,step=0.5,unit='mm',after}=o;
+  const inp=h('input',{type:'number',min,max,step,inputmode:'decimal'});
+  inp.value=rnd(el[key]);
+  inp.addEventListener('input',()=>{const v=parseFloat(inp.value);if(!isNaN(v)){el[key]=clamp(v,min,max);after&&after();requestRender()}});
+  inp.addEventListener('change',()=>snapshot());
+  propRefs.push(()=>{if(document.activeElement!==inp)inp.value=rnd(el[key])});
+  return h('label',{class:'f'},h('span',{},label),h('span',{class:'inp'},inp,unit?h('em',{},unit):null));
+}
+function fText(el,label,key,area){
+  const inp=area?h('textarea',{rows:3,spellcheck:'false'}):h('input',{type:'text',spellcheck:'false'});
+  inp.value=el[key];
+  inp.addEventListener('input',()=>{el[key]=inp.value;requestRender()});
+  inp.addEventListener('change',()=>{renderList();renderData();snapshot()});
+  return h('label',{class:'f',style:area?'grid-template-columns:1fr':''},h('span',{},label),inp);
+}
+function fSel(el,label,key,opts,after){
+  const s=h('select',{});
+  for(const [v,t] of opts){const o=h('option',{value:v},t);if(key==='font')o.style.fontFamily=fontStack(v);s.append(o)}
+  s.value=el[key];
+  s.addEventListener('change',()=>{el[key]=s.value;after&&after();requestRender();snapshot()});
+  return h('label',{class:'f'},h('span',{},label),s);
+}
+function fChk(el,label,key,after){
+  const c=h('input',{type:'checkbox'});c.checked=!!el[key];
+  c.addEventListener('change',()=>{el[key]=c.checked;after&&after();requestRender();snapshot()});
+  return h('label',{class:'chk'},c,label);
+}
+function fSeg(el,label,key,opts,after){
+  const wrap=h('span',{class:'seg'});
+  const btns=opts.map(([v,t,aria])=>{
+    const b=h('button',{type:'button','aria-pressed':String(el[key]===v),'aria-label':aria||t,onclick:()=>{el[key]=v;btns.forEach(x=>x.b.setAttribute('aria-pressed',String(x.v===v)));after&&after();requestRender();snapshot()}},t);
+    return {b,v};
+  });
+  btns.forEach(x=>wrap.append(x.b));
+  return h('div',{class:'f'},h('span',{},label),wrap);
+}
+function buildProps(){
+  const box=$('#props');box.innerHTML='';propRefs=[];
+  const el=selEl();
+  if(!el){box.append(h('p',{class:'empty'},'Touchez un élément de l\'étiquette, ou ajoutez-en un, pour modifier ses propriétés.'));return}
+  box.append(h('p',{class:'hint',style:'margin-top:0'},TYPE_NAME[el.type]));
+  const rot=()=>fSeg(el,'Rotation','rot',[[0,'0°'],[90,'90°'],[180,'180°'],[270,'270°']],()=>{syncProps();updateSel()});
+  if(el.type==='text'){
+    box.append(fText(el,'Contenu','text',true));
+    box.append(fSel(el,'Police','font',FONT_NAMES.map(n=>[n,n])));
+    box.append(fNum(el,'Taille','pt',{min:4,max:200,step:0.5,unit:'pt'}));
+    box.append(fSeg(el,'Style','bold',[[false,'Normal'],[true,'Gras']]));
+    box.append(fChk(el,'Italique','italic'));
+    box.append(fSeg(el,'Alignement','align',[['left','Gauche'],['center','Centre'],['right','Droite']]));
+    box.append(fNum(el,'Largeur','w',{min:2,max:600,after:()=>updateSel()}));
+    box.append(fNum(el,'Interligne','ls',{min:0.8,max:3,step:0.05,unit:''}));
+    box.append(fChk(el,'Réduire pour tenir sur une ligne','fit'));
+    box.append(fChk(el,'Texte blanc sur fond noir','inv'));
+    box.append(rot());
+  }else if(el.type==='barcode'){
+    box.append(fText(el,'Données','text',false));
+    box.append(fChk(el,'Afficher le texte sous les barres','show'));
+    box.append(fNum(el,'Largeur','w',{min:5,max:600}));
+    box.append(fNum(el,'Hauteur','h',{min:4,max:600}));
+    box.append(rot());
+    box.append(h('p',{class:'hint'},'Code 128. Les chiffres seuls sont compactés automatiquement. La largeur inclut les marges blanches du code.'));
+  }else if(el.type==='qr'){
+    box.append(fText(el,'Données','text',true));
+    box.append(fSel(el,'Correction','ecc',[['L','Faible (7 %)'],['M','Moyenne (15 %)'],['Q','Haute (25 %)'],['H','Maximale (30 %)']]));
+    box.append(fNum(el,'Taille','w',{min:6,max:300,after:()=>{el.h=el.w}}));
+    box.append(rot());
+  }else if(el.type==='image'){
+    const file=h('input',{type:'file',accept:'image/*',hidden:true});
+    file.addEventListener('change',()=>{if(file.files[0])loadImage(el,file.files[0])});
+    box.append(h('div',{class:'f'},h('span',{},'Fichier'),h('button',{class:'btn sm',onclick:()=>file.click()},el.src?'Changer l\'image':'Choisir une image')),file);
+    const lockFix=(from)=>()=>{if(el.lock&&el.ratio){if(from==='w')el.h=rnd(el.w*el.ratio);else el.w=rnd(el.h/el.ratio);syncProps()}updateSel()};
+    box.append(fNum(el,'Largeur','w',{min:2,max:600,after:lockFix('w')}));
+    box.append(fNum(el,'Hauteur','h',{min:2,max:600,after:lockFix('h')}));
+    box.append(fChk(el,'Garder les proportions','lock'));
+    box.append(rot());
+  }else if(el.type==='rect'){
+    box.append(fNum(el,'Largeur','w',{min:1,max:600}));
+    box.append(fNum(el,'Hauteur','h',{min:1,max:600}));
+    box.append(fChk(el,'Rempli en noir','fill'));
+    box.append(fNum(el,'Épaisseur','thick',{min:0.1,max:10,step:0.1}));
+  }else if(el.type==='line'){
+    box.append(fNum(el,'Longueur','w',{min:1,max:600}));
+    box.append(fNum(el,'Épaisseur','h',{min:0.1,max:20,step:0.1}));
+    box.append(rot());
+  }
+  box.append(h('h3',{},'Position'));
+  box.append(fNum(el,'Gauche','x',{min:-100,max:600,after:()=>updateSel()}));
+  box.append(fNum(el,'Haut','y',{min:-100,max:900,after:()=>updateSel()}));
+  box.append(h('div',{style:'display:flex;gap:8px;margin-top:12px'},
+    h('button',{class:'btn sm',onclick:dupEl},'Dupliquer'),
+    h('button',{class:'btn sm',style:'color:var(--bad)',onclick:delEl},'Supprimer')));
+}
+function loadImage(el,file){
+  const r=new FileReader();
+  r.onload=()=>{
+    const im=new Image();
+    im.onload=()=>{
+      const max=1000,k=Math.min(1,max/Math.max(im.naturalWidth,im.naturalHeight));
+      const c=document.createElement('canvas');c.width=Math.round(im.naturalWidth*k);c.height=Math.round(im.naturalHeight*k);
+      const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);
+      el.src=c.toDataURL('image/png');el.ratio=c.height/c.width;el.h=rnd(el.w*el.ratio);
+      buildProps();draw();snapshot();
+    };
+    im.src=r.result;
+  };
+  r.readAsDataURL(file);
+}
+
+/* ============ panneau données ============ */
+function renderData(){
+  const vb=$('#vars');vb.innerHTML='';
+  const vs=detectVars();
+  if(!vs.length)vb.append(h('p',{class:'empty'},'Aucun champ pour le moment.'));
+  for(const v of vs){
+    const t=h('textarea',{rows:1,spellcheck:'false'});t.value=S.vars[v.key]||'';
+    t.addEventListener('input',()=>{S.vars[v.key]=t.value;requestRender()});
+    t.addEventListener('change',save);
+    vb.append(h('label',{class:'f'},h('span',{},v.label),t));
+  }
+  const p=parseCSV(S.csv);
+  $('#csv').value!==S.csv&&($('#csv').value=S.csv);
+  $('#useCsv').checked=S.useCsv;
+  $('#csvInfo').textContent=p.rows.length?`${p.rows.length} ligne${p.rows.length>1?'s':''} · colonnes : ${p.cols.join(', ')}`:'';
+  const rb=$('#rowbar');rb.hidden=!(S.useCsv&&p.rows.length);
+  if(!rb.hidden){S.rowIdx=clamp(S.rowIdx,0,p.rows.length-1);$('#rowInfo').textContent=`Étiquette ${S.rowIdx+1} sur ${p.rows.length}`}
+  else S.rowIdx=0;
+}
+
+/* ============ interface étiquette ============ */
+function syncLabelUI(){
+  const L=S.label;
+  $('#lw').value=L.w;$('#lh').value=L.h;$('#dpi').value=L.dpi;$('#ptype').value=L.paper;$('#gap').value=L.gap;
+  $('#gapRow').style.display=(L.paper==='cont'||L.paper==='auto')?'none':'';
+  const idx=PRESETS.findIndex(p=>p[1]===L.w&&p[2]===L.h);
+  $('#preset').value=idx>=0?String(idx):'custom';
+}
+function setLabelSize(w,hh,scale){
+  const L=S.label,ow=L.w,oh=L.h;
+  L.w=clamp(w,5,300);L.h=clamp(hh,5,600);
+  if(scale&&S.prefs.fitEls&&S.els.length&&ow&&oh&&(ow!==L.w||oh!==L.h)){
+    const sx=L.w/ow,sy=L.h/oh,sp=(sx+sy)/2,r=v=>Math.round(v*100)/100;
+    for(const e of S.els){
+      e.x=r(e.x*sx);e.y=r(e.y*sy);
+      if(e.w!=null)e.w=r(e.w*sx);
+      if(e.h!=null)e.h=r(e.h*(e.type==='line'?sp:sy));
+      if(e.thick!=null)e.thick=r(e.thick*sp);
+      if(e.pt!=null)e.pt=Math.max(4,r(e.pt*sp));
+    }
+    toast('Contenu adapté au nouveau format');
+  }
+  syncLabelUI();if(S.auto)fitZoom();draw();snapshot();
+}
+function setTab(t){
+  document.body.dataset.tab=t;
+  $$('#tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
+}
+
+/* ============ conversion et envoi ============ */
+function toMono(canvas){
+  const w=canvas.width,hh=canvas.height,d=canvas.getContext('2d').getImageData(0,0,w,hh).data;
+  const wb=Math.ceil(w/8),bits=new Uint8Array(wb*hh),th=S.prefs.threshold;
+  for(let y=0;y<hh;y++)for(let x=0;x<w;x++){
+    const i=(y*w+x)*4,l=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+    if(l<th)bits[y*wb+(x>>3)]|=0x80>>(x&7);
+  }
+  return {w,h:hh,wb,bits};
+}
+const ENC=new TextEncoder();
+function cat(...parts){let n=0;for(const p of parts)n+=p.length;const o=new Uint8Array(n);let k=0;for(const p of parts){o.set(p,k);k+=p.length}return o}
+function buildTSPL(m,copies){
+  const L=S.label,P=S.prefs,inv=P.invert;
+  const gap=L.paper==='gap'?`GAP ${L.gap} mm,0 mm\r\n`:L.paper==='mark'?`BLINE ${L.gap} mm,0 mm\r\n`:L.paper==='cont'?'GAP 0 mm,0 mm\r\n':''; /* auto : aucun GAP imposé, l'imprimante garde son réglage appris */
+  const head=`SIZE ${L.w} mm,${L.h} mm\r\n${gap}DIRECTION ${P.direction}\r\nREFERENCE 0,0\r\nDENSITY ${P.density}\r\nSPEED ${P.speed}\r\nCLS\r\nBITMAP 0,0,${m.wb},${m.h},0,`;
+  const data=new Uint8Array(m.bits.length);
+  for(let i=0;i<data.length;i++)data[i]=inv?m.bits[i]:(~m.bits[i])&0xFF;
+  return cat(ENC.encode(head),data,ENC.encode(`\r\nPRINT ${copies},1\r\n`));
+}
+function buildTSPLNative(row,copies){
+  const L=S.label,P=S.prefs,dpmm=L.dpi/25.4;
+  const D=v=>Math.round(v*dpmm);
+  const gapLine=L.paper==='auto'?'':(L.paper==='gap'?`GAP ${L.gap} mm,0 mm\r\n`:L.paper==='mark'?`BLINE ${L.gap} mm,0 mm\r\n`:'GAP 0 mm,0 mm\r\n');
+  const esc=s=>String(s||'').replace(/[\r\n]+/g,' ').replace(/"/g,'').trim();
+  let out=`SIZE ${L.w} mm,${L.h} mm\r\n${gapLine}DIRECTION ${P.direction}\r\nREFERENCE 0,0\r\nDENSITY ${P.density}\r\nSPEED ${P.speed}\r\nCLS\r\n`;
+  /* polices bitmap TSPL : [numéro, largeur, hauteur] en points (203 dpi ≈ 8 pts/mm) */
+  const FONTS=[['1',8,12],['2',12,20],['3',16,24],['4',24,32],['5',32,48]];
+  const pickFont=(lines,pt,maxDots)=>{
+    let longest='';for(const l of lines)if(l.length>longest.length)longest=l;
+    const target=pt*25.4/72*dpmm*1.2;
+    let best=null,alt=null;
+    for(const [n,w,h] of FONTS)for(let m=1;m<=6;m++){
+      const hh=h*m;
+      if(longest.length*w*m>maxDots*0.94)continue;
+      if(!alt||hh<alt.hh||(hh===alt.hh&&m<alt.m))alt={n,m,hh};
+      if(hh<=target&&(!best||hh>best.hh||(hh===best.hh&&m<best.m)))best={n,m,hh};
+    }
+    return best||alt||{n:'1',m:1,hh:12};
+  };
+  for(const el of S.els){
+    if(el.type==='text'){
+      const lay=layoutText(el,row,dpmm,false);
+      const src=lay.lines.filter(l=>l!=='');
+      if(!src.length)continue;
+      const f=pickFont(src,el.pt,D(el.w));
+      const step=Math.round(f.hh*1.3);
+      let y=D(el.y);
+      for(const line of src){
+        if(!line)continue;
+        out+=`TEXT ${D(el.x)},${y},"${f.n}",0,${f.m},${f.m},"${esc(line)}"\r\n`;
+        y+=step;
+      }
+    }else if(el.type==='barcode'){
+      const data=resolve(el.text,row,false);
+      if(!data)continue;
+      /* Code 128 dessiné en traits LINE : la commande BARCODE native est mal interprétée
+         par certaines imprimantes (elle imprime des caractères parasites à la place). */
+      const pat=code128(data);
+      const avail=Math.max(40,D(el.w));
+      const total=[...pat].reduce((a,c)=>a+ +c,0)+20;   /* + zones silencieuses (10 de chaque côté) */
+      const mpx=Math.max(1,Math.floor(avail/total));
+      const bw=total*mpx;
+      const txtH=el.show?Math.round(D(3.2)):0;
+      const bh=Math.max(20,Math.round(D(el.h))-txtH);
+      const left=Math.round(D(el.x)+(avail-bw)/2);
+      const y=Math.round(D(el.y));
+      let x=left+10*mpx,bar=true;
+      for(const c of pat){
+        const w=+c*mpx;
+        if(bar)out+=`LINE ${x},${y},${x+w-1},${y},${bh}\r\n`;
+        x+=w;bar=!bar;
+      }
+      if(el.show){
+        const ch=data.length*12;
+        out+=`TEXT ${Math.max(4,Math.round(left+bw/2-ch/2))},${y+bh+4},"2",0,1,1,"${esc(data)}"\r\n`;
+      }
+    }else if(el.type==='qr'){
+      const data=resolve(el.text,row,false);
+      if(!data)continue;
+      /* taille de module calculée pour tenir dans la largeur de l'élément (en points) */
+      const CAP=[14,26,42,62,84,106,122,152,180,213,251,287,331,362,412,450,504,560,624,666,711,771,857,911,997];
+      let vi=CAP.findIndex(c=>data.length<=c);if(vi<0)vi=CAP.length-1;
+      const mod=clamp(Math.round(D(el.w||el.h)/(17+4*(vi+1))),2,16);
+      out+=`QRCODE ${D(el.x)},${D(el.y)},${el.ecc||'M'},${mod},M,S,"${esc(data)}"\r\n`;
+    }else if(el.type==='line'){
+      const x=D(el.x),y=D(el.y);
+      out+=`LINE ${x},${y},${x+D(el.w)},${y},${Math.max(1,D(el.h||0.4))}\r\n`;
+    }else if(el.type==='rect'){
+      const x=D(el.x),y=D(el.y);
+      out+=`RECTANGLE ${x},${y},${x+D(el.w)},${y+D(el.h)},${Math.max(1,D(el.thick||0.4))}\r\n`;
+    }
+  }
+  out+=`PRINT ${copies},1\r\n`;
+  return encL1(out);
+}
+function encL1(str){
+  const out=new Uint8Array(str.length);
+  for(let i=0;i<str.length;i++){out[i]=str.charCodeAt(i)&0xFF}
+  return out;
+}
+function buildESCPOS(m,copies){
+  const data=new Uint8Array(m.bits.length);
+  for(let i=0;i<data.length;i++)data[i]=S.prefs.invert?(~m.bits[i])&0xFF:m.bits[i];
+  const one=cat(new Uint8Array([0x1D,0x76,0x30,0,m.wb&255,m.wb>>8,m.h&255,m.h>>8]),data,new Uint8Array([0x0A,0x0A]));
+  const parts=[new Uint8Array([0x1B,0x40])];
+  for(let i=0;i<copies;i++)parts.push(one);
+  return cat(...parts);
+}
+async function jobBytes(i){
+  const lang=S.prefs.lang;
+  if(lang==='tspl'&&S.prefs.nativeTspl)return buildTSPLNative(rowFor(i),S.copies);
+  if(lang==='zpl')return buildZPL(rowFor(i),S.copies);
+  const c=document.createElement('canvas');
+  render(c,rowFor(i),{preview:false});
+  const m=toMono(c);
+  if(lang==='escpos')return buildESCPOS(m,S.copies);
+  return buildTSPL(m,S.copies); /* tsplimg : même langage, rendu en image bitmap */
+}
+/* ZPL (Zebra) — syntaxe vérifiée sur le guide ZPL II officiel Zebra */
+function buildZPL(row,copies){
+  const L=S.label,P=S.prefs,dpmm=L.dpi/25.4;
+  const D=v=>Math.round(v*dpmm);
+  const z=s=>String(s||'').replace(/[\r\n]+/g,' ').replace(/[\^~]/g,'').trim();
+  const CAP=[14,26,42,62,84,106,122,152,180,213,251,287,331,362,412,450,504,560,624,666,711,771,857,911,997];
+  let out=`^XA\n^PW${D(L.w)}\n^LL${D(L.h)}\n^LH0,0\n^CI28\n^MD${clamp(P.density*2,0,30)}\n^PR${clamp(P.speed,1,8)}\n`;
+  if(P.direction===0)out+='^POI\n';
+  if(L.paper==='gap'||L.paper==='mark')out+='^MMT\n';
+  for(const el of S.els){
+    const x=D(el.x),y=D(el.y);
+    if(el.type==='text'){
+      const lay=layoutText(el,row,dpmm,false);
+      const src=lay.lines.filter(l=>l!=='');
+      if(!src.length)continue;
+      const h=Math.max(8,Math.round(el.pt*25.4/72*dpmm));
+      const al=el.align==='center'?'C':el.align==='right'?'R':'L';
+      const body=src.map(z).join('\\&');
+      const fld=`^A0N,${h},0\n^FB${D(el.w)},${src.length},0,${al},0\n^FD${body}^FS\n`;
+      out+=`^FO${x},${y}${el.inv?'^FR':''}\n${fld}`;
+      if(el.bold)out+=`^FO${x+1},${y}${el.inv?'^FR':''}\n${fld}`; /* faux-gras : 2e passe décalée de 1 point */
+    }else if(el.type==='barcode'){
+      const data=resolve(el.text,row,false);
+      if(!data)continue;
+      out+=`^FO${x},${y}\n^BCN,${Math.max(24,D(el.h))},${el.show?'Y':'N'},N,N,A\n^FD${z(data)}^FS\n`;
+    }else if(el.type==='qr'){
+      const data=resolve(el.text,row,false);
+      if(!data)continue;
+      let vi=CAP.findIndex(c=>data.length<=c);if(vi<0)vi=CAP.length-1;
+      const modules=17+4*(vi+1);
+      const avail=Math.min(D(el.w||el.h),D(el.h||el.w))||24;
+      const mag=clamp(Math.floor(avail/modules)||1,1,10);
+      out+=`^FO${x},${y}\n^BQN,2,${mag}\n^FD${el.ecc||'M'}A,${z(data)}^FS\n`;
+    }else if(el.type==='line'){
+      const t=Math.max(1,D(el.h||0.4));
+      out+=`^FO${x},${y}\n^GB${Math.max(1,D(el.w))},0,${t},B,0\n`;
+    }else if(el.type==='rect'){
+      const w=Math.max(1,D(el.w)),h=Math.max(1,D(el.h));
+      const t=el.fill?Math.min(w,h):Math.max(1,D(el.thick||0.4));
+      out+=`^FO${x},${y}\n^GB${w},${h},${t},B,0\n`;
+    } /* images non supportées en ZPL */
+  }
+  out+=`^PQ${Math.max(1,copies)},0,1,Y\n^XZ\n`;
+  return ENC.encode(out);
+}
+/* Étiquette de test dans le langage sélectionné : même chemin de code que l'impression réelle */
+async function testBytes(){
+  const keepEls=S.els,keepVars=S.vars,keepCopies=S.copies;
+  const L=S.label,m=Math.max(2,Math.min(L.w,L.h)*0.06),w=L.w-2*m;
+  const name=S.prefs.lang==='tspl'?(S.prefs.nativeTspl?'TSPL natif':'TSPL image'):S.prefs.lang==='zpl'?'ZPL':S.prefs.lang==='escpos'?'ESC/POS':'TSPL image';
+  S.copies=1;
+  S.els=[
+    mk('text',{x:m,y:m,w:w,text:'TEST — '+name,font:'Montserrat',pt:Math.max(9,Math.round(L.h*0.07)),bold:true,align:'center'}),
+    mk('line',{x:m,y:L.h*0.20,w:w,h:0.8}),
+    mk('text',{x:m,y:L.h*0.24,w:w,text:"Si vous lisez ceci, la langue fonctionne.",font:'Roboto',pt:Math.max(7,Math.round(L.h*0.045)),align:'center'}),
+    mk('barcode',{x:m,y:L.h*0.45,w:w,h:Math.max(10,L.h*0.2),text:'TEST-123456',show:true}),
+    mk('qr',{x:(L.w-Math.min(L.w,L.h)*0.2)/2,y:L.h*0.72,w:Math.min(L.w,L.h)*0.2,h:Math.min(L.w,L.h)*0.2,text:'TEST'})
+  ];
+  try{return await jobBytes(0)}
+  finally{S.els=keepEls;S.vars=keepVars;S.copies=keepCopies}
+}
+async function allFonts(){await Promise.all(S.els.filter(e=>e.type==='text').map(ensureFont));if(document.fonts&&document.fonts.ready)await document.fonts.ready}
+
+const conn={mode:null,name:'',usb:null,port:null,writer:null,char:null,dev:null};
+const BLE_SERVICES=[0xffe0,0xff00,0x18f0,0xfee7,0xfff0,0xffb0,0xae30,0xffe5,'49535343-fe7d-4ae5-8fa9-9fafd205e455','e7810a71-73ae-499d-8c15-faa9aef0c3f2'];
+function isConnected(){
+  const m=S.prefs.mode;
+  if(m==='browser')return true;
+  return conn.mode===m&&!!(m==='usb'?conn.usb:m==='serial'?conn.writer:m==='local'?conn.name:conn.char&&conn.dev&&conn.dev.gatt.connected);
+}
+function updateConn(){
+  const m=S.prefs.mode,ok=m!=='browser'&&isConnected();
+  $('#connDot').className='dot'+(ok?' on':'');$('#connDot2').className='dot'+(ok?' on':'');
+  $('#connText').textContent=m==='browser'?'Aucune connexion à établir':ok?'Connectée : '+(conn.name||'imprimante'):'Non connectée';
+  $('#btnConnect').style.display=m==='browser'?'none':'';
+  const fr=$('#fileRow');if(fr)fr.hidden=m!=='local';
+  if($('#btnTestLang'))$('#btnTestLang').style.display=m==='browser'?'none':'';
+  $('#btnConnect').textContent=ok?'Reconnecter':'Connecter';
+  const hints={
+    browser:'Utilise le pilote de l\'imprimante installé sur l\'appareil. Dans la fenêtre d\'impression, vérifiez que le format du papier correspond à l\'étiquette et que les marges sont à zéro.',
+    local:'Envoi direct via le helper local (printme_helper.py) vers la file Windows — aucune fenêtre d\'impression. Lancez d\'abord : python printme_helper.py',
+    usb:'Envoi direct par câble USB (Chrome ou Edge). Sous Windows, le pilote WinUSB est nécessaire (outil Zadig) ; sur Android, un câble OTG suffit.',
+    serial:'Port série, ou Bluetooth appairé comme port COM (Chrome ou Edge sur ordinateur).',
+    ble:'Bluetooth basse consommation (Chrome sur Android et ordinateur). Les imprimantes en Bluetooth classique n\'apparaissent pas ici : utilisez le câble USB.'};
+  $('#modeHint').textContent=hints[m];
+}
+/* --- acces au helper d'impression local (file Windows) --- */
+const HELPER='http://127.0.0.1:8765';
+async function helperFetch(chemin,opts){
+  const r=await fetch(HELPER+chemin,opts);
+  const j=await r.json();
+  if(j&&j.error)throw new Error(j.error);
+  return j;
+}
+const helperPrinters=async()=>(await helperFetch('/printers')).printers||[];
+function fillPrinterSel(list){
+  const s=$('#printerSel');if(!s)return;
+  const cur=S.prefs.printerName||conn.name;
+  s.innerHTML='';
+  for(const n of list)s.append(h('option',{value:n},n));
+  if(cur&&list.includes(cur))s.value=cur;
+}
+/* Un travail « Retenu » ou en erreur occupe le port : la file se remplit et
+   plus rien ne sort, sans aucun message. On la surveille et on la debloque. */
+async function checkJobs(silent){
+  if(S.prefs.mode!=='local'||!conn.name)return [];
+  try{
+    const jobs=(await helperFetch('/jobs?printer='+encodeURIComponent(conn.name))).jobs||[];
+    const bloques=jobs.filter(x=>x.bloque);
+    const info=$('#jobsInfo');
+    if(info){
+      info.textContent=!jobs.length?'File vide — rien en attente.'
+        :bloques.length?('ATTENTION : '+bloques.length+' travail(s) bloqué(s) — '+bloques.map(x=>'n°'+x.id+' ['+x.status+']').join(', ')+'. Cliquez sur « Débloquer la file ».')
+        :(jobs.length+' travail(s) en attente : '+jobs.map(x=>'n°'+x.id+' ['+x.status+']').join(', '));
+      info.style.color=bloques.length?'var(--bad)':'';
+    }
+    if(!silent&&!jobs.length)toast('File d\'impression vide');
+    return jobs;
+  }catch(e){
+    if(!silent)toast('Lecture de la file impossible : '+(e.message||e),true);
+    return [];
+  }
+}
+async function unblockQueue(){
+  if(!conn.name){toast('Connectez d\'abord l\'imprimante',true);return}
+  const b=$('#btnUnblock');b.disabled=true;b.textContent='Déblocage…';
+  try{
+    const r=await helperFetch('/unblock',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({printer:conn.name,action:'cancel'})});
+    const retire=(r.traites||[]);
+    const restants=(r.jobs||[]).length;
+    if(restants)toast('Travaux retirés : '+(retire.join(', ')||'aucun')+'. Il en reste '+restants+' : attendez 5 secondes puis vérifiez à nouveau.',true);
+    else if(retire.length)toast('File débloquée — travail(s) retiré(s) : '+retire.join(', '));
+    else toast('La file était déjà vide');
+    setTimeout(()=>checkJobs(true),1500);
+  }catch(e){toast('Déblocage impossible : '+(e.message||e),true)}
+  finally{b.disabled=false;b.textContent='Débloquer la file'}
+}
+async function connect(){
+  const m=S.prefs.mode;
+  try{
+    if(m==='local'){
+      const list=await helperPrinters();
+      if(!list.length)throw new Error('Aucune imprimante trouvée. Vérifiez qu\'une imprimante est installée dans Windows.');
+      conn.localPrinters=list;fillPrinterSel(list);
+      const pick=(S.prefs.printerName&&list.includes(S.prefs.printerName))?S.prefs.printerName
+        :list.find(n=>n.toUpperCase().includes('PRINT ME'))||list.find(n=>/LABEL|M420|TSPL/i.test(n))||list[0];
+      conn.mode='local';conn.name=pick;S.prefs.printerName=pick;savePrefs();
+      updateConn();toast('Imprimante directe : '+pick);
+      checkJobs(true);
+      return;
+    }
+    if(m==='usb'){
+      const d=await navigator.usb.requestDevice({filters:[]});
+      await d.open();if(d.configuration===null)await d.selectConfiguration(1);
+      let pick=null;
+      for(const itf of d.configuration.interfaces)for(const alt of itf.alternates){
+        const ep=alt.endpoints.find(e=>e.direction==='out'&&e.type==='bulk');
+        if(ep&&(!pick||alt.interfaceClass===7))pick={itf,alt,ep};
+      }
+      if(!pick)throw new Error('Aucune sortie USB de type impression trouvée.');
+      await d.claimInterface(pick.itf.interfaceNumber);
+      if(pick.alt.alternateSetting)await d.selectAlternateInterface(pick.itf.interfaceNumber,pick.alt.alternateSetting);
+      conn.usb={d,ep:pick.ep.endpointNumber};conn.name=d.productName||'USB';
+    }else if(m==='serial'){
+      const p=await navigator.serial.requestPort();
+      await p.open({baudRate:+S.prefs.baud});
+      conn.port=p;conn.writer=p.writable.getWriter();conn.name='Port série';
+    }else if(m==='ble'){
+      const dev=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:BLE_SERVICES});
+      const srv=await dev.gatt.connect();
+      let ch=null;
+      for(const s of await srv.getPrimaryServices()){
+        for(const c of await s.getCharacteristics()){if(c.properties.write||c.properties.writeWithoutResponse){ch=ch||c}}
+        if(ch)break;
+      }
+      if(!ch)throw new Error('Aucune caractéristique d\'écriture trouvée sur cet appareil.');
+      dev.addEventListener('gattserverdisconnected',()=>{conn.char=null;updateConn()});
+      conn.dev=dev;conn.char=ch;conn.name=dev.name||'Bluetooth';
+    }
+    conn.mode=m;updateConn();toast('Imprimante connectée');
+  }catch(e){
+    if(e&&e.name==='NotFoundError')return;
+    let msg=e.message||String(e);
+    if(m==='usb'&&/denied|access/i.test(msg))msg='Windows occupe l\'imprimante : le mode USB direct ne peut pas la prendre. Choisissez « Direct (imprimante Windows) » dans Envoi.';
+    toast('Connexion impossible : '+msg,true);
+  }
+}
+async function writeBytes(bytes){
+  const m=S.prefs.mode;
+  if(m==='local'){
+    let bin='';for(let i=0;i<bytes.length;i+=8192)bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+8192));
+    const r=await fetch('http://127.0.0.1:8765/print',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({printer:conn.name,data:btoa(bin)})});
+    const j=await r.json();
+    if(j.error)throw new Error(j.error);
+    return;
+  }
+  if(m==='usb'){for(let i=0;i<bytes.length;i+=4096)await conn.usb.d.transferOut(conn.usb.ep,bytes.slice(i,i+4096))}
+  else if(m==='serial'){for(let i=0;i<bytes.length;i+=512)await conn.writer.write(bytes.slice(i,i+512))}
+  else if(m==='ble'){
+    const n=+S.prefs.chunk,c=conn.char;
+    for(let i=0;i<bytes.length;i+=n){
+      const part=bytes.slice(i,i+n);
+      if(c.properties.writeWithoutResponse){await c.writeValueWithoutResponse(part);await sleep(6)}else await c.writeValue(part);
+    }
+  }
+}
+async function printBrowser(){
+  const w=S.label.w,hh=S.label.h,imgs=[];
+  for(let i=0;i<rowCount();i++){
+    const c=document.createElement('canvas');render(c,rowFor(i),{preview:false});
+    const url=c.toDataURL('image/png');for(let k=0;k<S.copies;k++)imgs.push(url);
+  }
+  const f=document.createElement('iframe');
+  f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+  document.body.appendChild(f);
+  const doc=f.contentDocument;
+  doc.open();
+  doc.write(`<!doctype html><html><head><meta charset="utf-8"><style>@page{size:${w}mm ${hh}mm;margin:0}html,body{margin:0;padding:0}img{display:block;width:${w}mm;height:${hh}mm;image-rendering:pixelated;page-break-after:always;break-after:page}img:last-child{page-break-after:auto;break-after:auto}</style></head><body>${imgs.map(u=>`<img src="${u}">`).join('')}</body></html>`);
+  doc.close();
+  await new Promise(r=>{const t=setTimeout(r,1500);f.onload=()=>{clearTimeout(t);setTimeout(r,150)}});
+  f.contentWindow.focus();f.contentWindow.print();
+  setTimeout(()=>f.remove(),60000);
+}
+let printing=false;
+async function doPrint(){
+  if(printing)return;
+  if(!S.els.length){toast('L\'étiquette est vide.',true);return}
+  const btn=$('#btnPrint');printing=true;btn.disabled=true;
+  try{
+    // Avertissement si mode bitmap (peut produire du texte brouillé)
+    if(S.prefs.lang!=='tspl' || !S.prefs.nativeTspl){
+      if(!confirm('Vous êtes en mode image/bitmap (non natif TSPL). Sur certaines imprimantes cela produit du texte brouillé. Voulez-vous continuer ?')){
+        printing=false; btn.disabled=false; btn.textContent='Imprimer';
+        return;
+      }
+    }
+    await allFonts();
+    if(S.prefs.mode==='browser'){await printBrowser();}
+    else{
+      if(!isConnected()){await connect();if(!isConnected())return}
+      const n=rowCount();
+      for(let i=0;i<n;i++){
+        btn.textContent=n>1?`Envoi ${i+1}/${n}…`:'Envoi…';
+        await writeBytes(await jobBytes(i));
+        if(n>1)await sleep(250);
+      }
+      toast(n>1?`${n} étiquettes envoyées`:'Étiquette envoyée');
+      /* la file se vide normalement en 1 a 3 s : si le travail y est encore,
+         c'est qu'un ancien travail bloque le port. On le dit clairement. */
+      await sleep(3000);
+      const restants=await checkJobs(true);
+      if(restants.length)toast('Étiquette envoyée, mais '+restants.length+' travail(s) sont encore dans la file. Si rien ne sort : bouton « Imprimante » puis « Débloquer la file ».',true);
+    }
+  }catch(e){toast('Échec de l\'impression : '+(e.message||e),true)}
+  finally{printing=false;btn.disabled=false;btn.textContent='Imprimer'}
+}
+function download(name,blob){const a=h('a',{href:URL.createObjectURL(blob),download:name});document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+
+/* ============ initialisation ============ */
+function bindPrefs(){
+  const map=[['#mode','mode'],['#lang','lang'],['#density','density','n'],['#speed','speed','n'],['#direction','direction','n'],['#threshold','threshold','n'],['#baud','baud','n'],['#chunk','chunk','n']];
+  for(const [sel,key,t] of map){
+    const e=$(sel);e.value=S.prefs[key];
+    e.addEventListener('change',()=>{S.prefs[key]=t==='n'?+e.value:e.value;savePrefs();if(key==='mode')updateConn();if(key==='threshold'&&S.prefs.bw)draw()});
+    if(key==='threshold')e.addEventListener('input',()=>{S.prefs[key]=+e.value;if(S.prefs.bw||S.prefs.dither)requestRender()});
+  }
+  for(const [sel,key] of [['#dither','dither'],['#invert','invert'],['#snap','snap'],['#bw','bw'],['#nativeTspl','nativeTspl'],['#fitEls','fitEls']]){
+    const e=$(sel);e.checked=!!S.prefs[key];
+    e.addEventListener('change',()=>{S.prefs[key]=e.checked;savePrefs();draw()});
+  }
+  const langSync=()=>{$('#nativeRow').style.display=$('#lang').value==='tspl'?'':'none'};
+  $('#lang').addEventListener('change',()=>{langSync(); if($('#lang').value==='tspl'){ S.prefs.nativeTspl=true; $('#nativeTspl').checked=true; savePrefs(); }});langSync();
+  $('#btnTestLang').onclick=async()=>{
+    try{
+      if(!isConnected()){await connect();if(!isConnected())return}
+      await writeBytes(await testBytes());
+      toast('Étiquette de test envoyée — langage '+$('#lang').selectedOptions[0].text);
+    }catch(e){toast('Échec du test : '+(e.message||e),true)}
+  };
+  if(!navigator.usb)$('#mode option[value=usb]').disabled=true;
+  if(!navigator.serial)$('#mode option[value=serial]').disabled=true;
+  if(!navigator.bluetooth)$('#mode option[value=ble]').disabled=true;
+  if($('#mode').selectedOptions[0]&&$('#mode').selectedOptions[0].disabled){S.prefs.mode='browser';$('#mode').value='browser'}
+}
+function init(){
+  const had=loadAll();
+  if(S.prefs.fitEls==null)S.prefs.fitEls=true;
+  bindPrefs();
+  const ps=$('#preset');
+  PRESETS.forEach((p,i)=>{
+    const o=h('option',{value:i},p[0]);
+    if(p[1]<0||p[2]<0){o.disabled=true;o.style.fontWeight='700'}   /* rubriques « — DYMO — » non sélectionnables */
+    ps.append(o);
+  });ps.append(h('option',{value:'custom'},'Personnalisé…'));
+  if(!had)applyTemplate('passservice');
+  else{
+    S.els.forEach(e=>{S.nextId=Math.max(S.nextId,(e.id||0)+1)});
+    /* dessin hérité du format 40 × 60 posé sur un grand format : on passe au modèle 100 × 150 en conservant les données */
+    const maxR=S.els.length?Math.max(...S.els.map(e=>e.x+(e.w||0))):0;
+    if(S.label.w>=90&&maxR<=45&&S.els.some(e=>e.type==='text'&&/PASS-SERVICE/.test(e.text||''))){
+      const keep={...S.vars};
+      applyTemplate('passservice');Object.assign(S.vars,keep);
+      toast('Étiquette migrée sur le format Colissimo 100 × 150');
+    }
+  }
+  $('#copies').value=S.copies;$('#csv').value=S.csv;
+  syncLabelUI();renderList();renderData();renderTemplates();buildProps();updateConn();
+  fitZoom();draw();
+  hist=[];hi=-1;snapshot();
+
+  /* en-tête */
+  $('#undo').onclick=undo;$('#redo').onclick=redo;
+  $('#copies').addEventListener('input',e=>{S.copies=clamp(parseInt(e.target.value)||1,1,999);save()});
+  $('#btnPrint').onclick=doPrint;
+  $('#btnPrinter').onclick=async()=>{
+    updateConn();$('#dlg').showModal();
+    if(S.prefs.mode==='local'){                       /* liste fraiche à l'ouverture */
+      try{const l=await helperPrinters();if(l.length){conn.localPrinters=l;fillPrinterSel(l)}}catch(e){}
+      checkJobs(true);
+    }
+  };
+  $('#btnJobs').onclick=()=>checkJobs(false);
+  $('#btnUnblock').onclick=unblockQueue;
+  $('#printerSel').addEventListener('change',e=>{conn.name=e.target.value;S.prefs.printerName=conn.name;savePrefs();updateConn();checkJobs(true)});
+  $('#dlgClose').onclick=()=>$('#dlg').close();
+  $('#btnConnect').onclick=connect;
+  $$('#tabs button').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+
+  /* étiquette */
+  ps.addEventListener('change',()=>{if(ps.value==='custom')return;const p=PRESETS[+ps.value];if(!p||p[1]<0||p[2]<0)return;setLabelSize(p[1],p[2],true)});
+  const sz=()=>{const w=parseFloat($('#lw').value),hh=parseFloat($('#lh').value);if(w>=5&&hh>=5)setLabelSize(w,hh,true)};
+  $('#lw').addEventListener('change',sz);$('#lh').addEventListener('change',sz);
+  $('#swap').onclick=()=>setLabelSize(S.label.h,S.label.w);
+  $('#dpi').addEventListener('change',e=>{S.label.dpi=+e.target.value;draw();snapshot()});
+  $('#ptype').addEventListener('change',e=>{S.label.paper=e.target.value;syncLabelUI();snapshot()});
+  $('#gap').addEventListener('change',e=>{S.label.gap=clamp(parseFloat(e.target.value)||0,0,20);snapshot()});
+  $$('[data-add]').forEach(b=>b.onclick=()=>addEl(b.dataset.add));
+
+  /* zoom */
+  $('#zIn').onclick=()=>setZoom(S.zoom*1.2,true);
+  $('#zOut').onclick=()=>setZoom(S.zoom/1.2,true);
+  $('#zFit').onclick=()=>{S.auto=true;fitZoom();applyZoom();updateSel()};
+  addEventListener('resize',()=>{if(S.auto){fitZoom();applyZoom();updateSel()}});
+
+  /* données */
+  $('#csv').addEventListener('input',e=>{S.csv=e.target.value;renderData();requestRender()});
+  $('#csv').addEventListener('change',save);
+  $('#useCsv').addEventListener('change',e=>{S.useCsv=e.target.checked;renderData();draw();save()});
+  $('#csvHead').onclick=()=>{const v=detectVars().map(x=>x.label);if(!v.length){toast('Ajoutez d\'abord des champs {{nom}} dans l\'étiquette.',true);return}S.csv=v.join(';')+'\n'+S.csv.replace(/^[^\n]*\n?/,'');$('#csv').value=S.csv;renderData();draw();save()};
+  $('#rPrev').onclick=()=>{S.rowIdx=Math.max(0,S.rowIdx-1);renderData();draw()};
+  $('#rNext').onclick=()=>{S.rowIdx=Math.min(csvRows().length-1,S.rowIdx+1);renderData();draw()};
+
+  /* modèles */
+  $('#saveTpl').onclick=()=>{const n=(prompt('Nom du modèle :')||'').trim();if(!n)return;const o=savedTpl();o[n]={label:S.label,els:JSON.parse(serialize()).els,vars:S.vars};putTpl(o);renderTemplates();toast('Modèle enregistré')};
+  $('#expTpl').onclick=()=>download('etiquette.json',new Blob([JSON.stringify({label:S.label,els:S.els,vars:S.vars},strip,2)],{type:'application/json'}));
+  $('#impTpl').onclick=()=>$('#impFile').click();
+  $('#impFile').addEventListener('change',e=>{
+    const f=e.target.files[0];if(!f)return;
+    f.text().then(t=>{const o=JSON.parse(t);if(!o.label||!Array.isArray(o.els))throw new Error('Fichier non reconnu');
+      S.label={...S.label,...o.label};S.els=o.els.map(x=>({...x,id:S.nextId++}));Object.assign(S.vars,o.vars||{});S.sel=null;afterStructure();snapshot();toast('Modèle importé')})
+    .catch(err=>toast('Import impossible : '+err.message,true)).finally(()=>e.target.value='');
+  });
+
+  /* exports */
+  $('#dlPng').onclick=async()=>{await allFonts();const c=document.createElement('canvas');render(c,rowFor(S.rowIdx),{preview:false});c.toBlob(b=>download('etiquette.png',b))};
+  $('#dlCmd').onclick=async()=>{await allFonts();const parts=[];for(let i=0;i<rowCount();i++)parts.push(await jobBytes(i));download('etiquettes.prn',new Blob(parts,{type:'application/octet-stream'}))};
+
+  /* manipulation directe */
+  const paper=$('#paper');let drag=null,rs=null;
+  const ptMM=e=>{const r=paper.getBoundingClientRect();return {x:(e.clientX-r.left)/S.zoom,y:(e.clientY-r.top)/S.zoom}};
+  const sn=v=>S.prefs.snap?Math.round(v*2)/2:Math.round(v*10)/10;
+  paper.addEventListener('pointerdown',e=>{
+    if(e.target.id==='hnd')return;
+    const p=ptMM(e);let hit=null;
+    for(let i=S.els.length-1;i>=0;i--){const b=hitBox(S.els[i]);if(p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h){hit=S.els[i];break}}
+    select(hit?hit.id:null);
+    if(hit){drag={el:hit,dx:p.x-hit.x,dy:p.y-hit.y,moved:false};paper.setPointerCapture(e.pointerId)}
+  });
+  paper.addEventListener('pointermove',e=>{
+    if(!drag)return;const p=ptMM(e);
+    drag.el.x=sn(p.x-drag.dx);drag.el.y=sn(p.y-drag.dy);drag.moved=true;syncProps();requestRender();
+  });
+  const endDrag=()=>{if(drag&&drag.moved)snapshot();drag=null};
+  paper.addEventListener('pointerup',endDrag);paper.addEventListener('pointercancel',endDrag);
+  const hnd=$('#hnd');
+  hnd.addEventListener('pointerdown',e=>{
+    const el=selEl();if(!el)return;e.stopPropagation();
+    rs={el,p0:ptMM(e),w:el.w,h:el.h};hnd.setPointerCapture(e.pointerId);
+  });
+  hnd.addEventListener('pointermove',e=>{
+    if(!rs)return;const el=rs.el,p=ptMM(e),dx=p.x-rs.p0.x,dy=p.y-rs.p0.y;
+    const rot=el.type==='rect'?0:(el.rot||0),swap=rot===90||rot===270;
+    const dw=swap?dy:dx,dh=swap?dx:dy;
+    if(el.type==='text'||el.type==='line'){el.w=rnd(Math.max(2,sn(rs.w+dw)))}
+    else if(el.type==='qr'){const d=Math.max(dw,dh);el.w=el.h=rnd(Math.max(6,sn(rs.w+d)))}
+    else{
+      el.w=rnd(Math.max(2,sn(rs.w+dw)));el.h=rnd(Math.max(2,sn(rs.h+dh)));
+      if(el.type==='image'&&el.lock&&el.ratio)el.h=rnd(el.w*el.ratio);
+    }
+    syncProps();requestRender();
+  });
+  const endRs=()=>{if(rs)snapshot();rs=null};
+  hnd.addEventListener('pointerup',endRs);hnd.addEventListener('pointercancel',endRs);
+
+  /* clavier */
+  document.addEventListener('keydown',e=>{
+    if(/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)||$('#dlg').open)return;
+    const el=selEl(),mod=e.ctrlKey||e.metaKey;
+    if(mod&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();return}
+    if(mod&&e.key.toLowerCase()==='y'){e.preventDefault();redo();return}
+    if(!el)return;
+    if(mod&&e.key.toLowerCase()==='d'){e.preventDefault();dupEl();return}
+    if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();delEl();return}
+    const st=e.shiftKey?5:0.5,mv={ArrowLeft:[-st,0],ArrowRight:[st,0],ArrowUp:[0,-st],ArrowDown:[0,st]}[e.key];
+    if(mv){e.preventDefault();el.x=rnd(el.x+mv[0]);el.y=rnd(el.y+mv[1]);syncProps();requestRender();clearTimeout(init.t);init.t=setTimeout(snapshot,400)}
+  });
+  if(document.fonts)document.fonts.addEventListener('loadingdone',requestRender);
+
+  /* application installable (Windows, macOS, Linux, Android) : mise en cache hors-ligne */
+  if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){
+    addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+  }
+}
+init();
+</script>
+</body>
+</html>

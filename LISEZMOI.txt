@@ -1,0 +1,140 @@
+====================================================================
+  PRINT ME  -  application d'etiquettes  -  version 1.0
+  Pour imprimante thermique TSPL (TS-M420, TSC, iDPRT, Xprinter, Zebra...)
+====================================================================
+
+Dossier pret a l'emploi : copiez le dossier entier sur une cle USB,
+un autre ordinateur ou un telephone, puis suivez "DEMARRAGE".
+
+--------------------------------------------------------------------
+1) DEMARRAGE RAPIDE
+--------------------------------------------------------------------
+
+WINDOWS
+  Double-cliquez sur :  Demarrer-Windows.bat
+  -> le navigateur s'ouvre tout seul sur l'application.
+
+MAC
+  Double-cliquez sur :  Demarrer-Mac.command
+  (si macOS refuse : clic droit > Ouvrir > Ouvrir)
+
+LINUX
+  Ouvrez un terminal dans ce dossier puis :
+      chmod +x Demarrer-Linux.sh
+      ./Demarrer-Linux.sh
+
+SANS PYTHON / SANS INSTALLATION
+  Ouvrez simplement le fichier  index.html  dans Chrome, Edge ou Firefox.
+  Tout fonctionne sauf le mode "Direct (imprimante Windows)".
+
+ANDROID
+  Copiez le dossier sur le telephone puis ouvrez  index.html  avec Chrome.
+  Impressions possibles :
+    - "Bluetooth basse consommation" (BLE) : imprimantes BLE recentes ;
+    - "USB direct" avec un cable OTG (Chrome Android) ;
+    - "Navigateur (fenetre d'impression)" via une application d'impression.
+  Astuce : pour installer l'application sur l'ecran d'accueil, ouvrez-la
+  depuis un serveur (adresse http://...) puis Chrome > menu > "Ajouter a
+  l'ecran d'accueil". Une fois installee, elle fonctionne hors ligne.
+
+--------------------------------------------------------------------
+2) REGLAGES RECOMMANDES POUR LA TS-M420
+--------------------------------------------------------------------
+
+  Bouton "Imprimante" (en haut a droite) :
+
+  Envoi        : Direct (imprimante Windows)     <- le plus fiable
+  Langage      : TSPL - texte natif (etiquettes)
+  Rendu net    : coche  (texte / code-barres / QR natifs)
+  Densite      : 8 a 10
+  Vitesse      : 3 a 4
+  Resolution   : 203 dpi (8 points/mm)
+  Papier       : Auto  (l'imprimante garde son calibrage)
+                 -> "Etiquettes avec espace" + Espace 2 mm si le
+                    calibrage automatique est perdu.
+
+  IMPORTANT : ne restez PAS en mode TSPL image (bitmap) : certaines
+  imprimantes impriment alors un bloc de symboles illisible.
+
+  Verifiez aussi dans Windows > Imprimantes que l'imprimante n'est ni
+  "Hors ligne" ni "En pause".
+
+--------------------------------------------------------------------
+3) ETIQUETTES ET MODELES FOURNIS
+--------------------------------------------------------------------
+
+  Pass-Service . Colissimo 100 x 150   (modele par defaut)
+  Colissimo 100 x 150
+  DYMO . Expedition 102 x 152
+  DYMO . Adresse 89 x 36
+  Colis 100 x 150 (generique)
+  Bon de commande Vinted 40 x 60
+  Bon de commande 60 x 80
+  Courrier / adresse 40 x 60
+  Etiquette produit 40 x 60
+  Prix etagere 40 x 30
+
+  Formats disponibles dans "Format" : 100 x 150 (Pass-Service /
+  Colissimo), 102 x 152 (4 x 6 pouces), 89 x 36, 54 x 101, 25 x 54,
+  9 x 50, 54 x 70 (DYMO), et bien d'autres.
+
+  Chaque modele est modifiable : deplacez, redimensionnez, changez la
+  police, ajoutez un logo, puis "Enregistrer ce modele" (bouton
+  Enregistrer / Exporter pour partager le modele en fichier .json).
+
+--------------------------------------------------------------------
+4) DONNEES ET LOT (VINTED / COLISSIMO / BONS DE COMMANDE)
+--------------------------------------------------------------------
+
+  - Onglet "Donnees" : les champs entre doubles accolades, comme
+    {{destinataire}}, {{suivi}} ou {{commande}}, apparaissent
+    automatiquement et se remplissent d'un seul geste.
+  - Champs automatiques : {{date}}, {{heure}}, {{n}}, {{nb}}.
+  - Collez un tableau Excel / CSV dans la zone "Lot depuis un tableau",
+    cochez "Une etiquette par ligne" : une etiquette est imprimee par
+    ligne (adresses, numeros de suivi, articles...).
+  - Numero de suivi Colissimo : le code-barres est dessine en traits
+    natifs (Code 128), donc lisible par les lecteurs des transporteurs.
+
+--------------------------------------------------------------------
+5) EN CAS DE PROBLEME
+--------------------------------------------------------------------
+
+  Rien ne sort de l'imprimante
+    - L'imprimante est allumee, capot ferme, etiquette chargee ;
+    - cable USB rebranche directement sur l'ordinateur ;
+    - Windows > Imprimantes : imprimante "Prete", pas "Hors ligne" ;
+    - essayez "Imprimante > Tester ce langage (1 etiquette)" ;
+    - videz la file : voir "Imprimantes > Ouvrir la file" > annuler.
+
+  Texte brouille / caracteres illisibles
+    -> revenez au langage "TSPL - texte natif" (Rendu net coche).
+
+  L'imprimante est deconnectee / Unknown dans Windows
+    -> rebranchez le cable USB sur un autre port (evitez un hub non
+       alimente), puis attendez quelques secondes.
+
+  "Python 3 n'a pas ete trouve"
+    -> installez Python depuis python.org (cochez "Add python.exe to
+       PATH") pour debloquer l'impression directe, ou utilisez le mode
+       "Navigateur (fenetre d'impression)".
+
+--------------------------------------------------------------------
+6) CONTENU DU DOSSIER
+--------------------------------------------------------------------
+
+  index.html              l'application complete (un seul fichier)
+  Demarrer-Windows.bat    lanceur Windows
+  Demarrer-Mac.command    lanceur macOS
+  Demarrer-Linux.sh       lanceur Linux
+  labelprint_server.py    lanceur multiplateforme (serveur local)
+  helper/
+    printme_helper.py     envoi brut vers la file Windows (port 8765)
+  vendor/
+    qrcode.min.js         generateur de QR code (hors ligne)
+    icone.svg             icone de l'application
+  manifest.webmanifest    application installable
+  sw.js                   mise en cache hors ligne
+  modeles/                dossier de partage des modeles (export/import)
+
+Bonne impression !
