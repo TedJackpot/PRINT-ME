@@ -1,4 +1,4 @@
-PRINT ME STUDIO 2.1.0 — INSTALLATION
+PRINT ME STUDIO 2.1.1 — INSTALLATION
 
 WINDOWS 64 BITS
 1. Ouvrir PRINT-ME-Setup-2.1.0-Windows-x64.exe et suivre l’installation.
@@ -14,17 +14,22 @@ WINDOWS 64 BITS
 Aucun Python ou serveur séparé à démarrer avec cette version Windows.
 L’installeur ne possède pas de signature commerciale d’éditeur Windows.
 
-ANDROID
-1. Copier PRINT-ME-2.1.0-Android.apk sur le téléphone et l’ouvrir.
-   Android demande une autorisation d’installation pour la source utilisée.
-2. Pour un appareil USB : brancher la TS-M420 avec un câble/adaptateur OTG,
-   ouvrir Imprimante, choisir « USB direct Android (OTG) », Connecter,
-   sélectionner l’imprimante si demandé et autoriser l’accès USB.
-3. Appliquer TSPL image, 203 dpi, puis le format réel du rouleau.
-4. Tester une seule étiquette. Le pilote Windows n’est pas utilisé sur Android.
-Android 7 ou ultérieur, port USB hôte et connexion OTG compatibles nécessaires.
-Le mode Bluetooth des navigateurs n’est pas une prise en charge universelle
-Bluetooth. Cette livraison Android est principalement prévue pour USB OTG.
+ANDROID — MISE À JOUR BLUETOOTH 2.1.1
+1. Installer PRINT-ME-2.1.1-Android-Bluetooth.apk par-dessus la version 2.1.0.
+   La signature est conservée ; il n’est normalement pas nécessaire de désinstaller.
+2. Dans les réglages Bluetooth Android, appairer l’imprimante bluetoothprinter.
+   Utiliser le code indiqué dans son manuel si Android en demande un.
+3. Fermer les autres applications d’impression qui pourraient utiliser la connexion.
+4. Dans PRINT ME : Imprimante → Envoi → Bluetooth Android (appareils appairés).
+5. Actualiser la liste, autoriser Appareils à proximité si demandé,
+   sélectionner bluetoothprinter et cliquer sur Connecter.
+6. Choisir le langage et les dimensions exactes du rouleau, puis une seule copie.
+   Le pilote LABEL fourni déclare TSPL et 203 dpi ; le nom Bluetooth seul ne le confirme pas.
+
+Ce transport est Bluetooth classique RFCOMM/SPP. Le service réellement présent
+sur l’imprimante doit être vérifié par l’essai utilisateur ; BLE seul n’est pas
+pris en charge par ce mode. Si la connexion échoue, conserver le message exact.
+Le mode USB OTG et l’impression système restent disponibles.
 
 UTILISATION
 Accueil : modèles avec aperçu, nouvelle étiquette et créations enregistrées.

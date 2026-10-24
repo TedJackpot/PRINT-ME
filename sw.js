@@ -1,5 +1,5 @@
 /* PRINT ME — seules les ressources de cette application sont mises en cache. */
-const CACHE = 'printme-v2-studio-2.1';
+const CACHE = 'printme-v2-studio-2.1.1';
 const CORE = ['./assets/fonts.css','./assets/fonts/roboto-latin-400-normal.woff2','./assets/fonts/roboto-latin-400-italic.woff2','./assets/fonts/roboto-latin-700-normal.woff2','./assets/fonts/montserrat-latin-400-normal.woff2','./assets/fonts/montserrat-latin-700-italic.woff2','./assets/fonts/montserrat-latin-700-normal.woff2','./assets/fonts/inter-latin-400-italic.woff2','./assets/fonts/roboto-latin-700-italic.woff2','./assets/fonts/inter-latin-400-normal.woff2','./assets/fonts/inter-latin-700-italic.woff2','./assets/fonts/montserrat-latin-400-italic.woff2','./assets/fonts/inter-latin-700-normal.woff2','./', './manifest.webmanifest', './assets/studio.css', './vendor/qrcode.min.js', './vendor/icone.svg', './vendor/icon-192.png', './vendor/icon-512.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE)).then(() => self.skipWaiting()));

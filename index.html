@@ -259,6 +259,7 @@ dialog .dbody{padding:12px 16px 16px;overflow:auto;max-height:calc(92dvh - 60px)
     <label class="f"><span>Envoi</span><select id="mode">
       <option value="browser">Navigateur (fenêtre d'impression)</option>
       <option value="local">Direct (imprimante Windows)</option>
+      <option value="androidbt" hidden>Bluetooth Android (appareils appairés)</option>
       <option value="androidusb" hidden>USB direct Android (OTG)</option>
       <option value="usb">USB direct navigateur</option>
       <option value="serial">Port série / Bluetooth (PC)</option>
@@ -266,6 +267,12 @@ dialog .dbody{padding:12px 16px 16px;overflow:auto;max-height:calc(92dvh - 60px)
     </select></label>
     <p class="hint" id="modeHint"></p>
     <label class="f" id="androidUsbRow" hidden><span>Appareil USB</span><select id="androidUsbSel"><option value="">Cliquez sur Connecter pour rechercher</option></select></label>
+    <section id="androidBtRow" hidden>
+      <p class="hint">1. Appairez l’imprimante dans Android. 2. Actualisez la liste. 3. Choisissez l’appareil et connectez-le.</p>
+      <label class="f"><span>Imprimante</span><select id="androidBtSel"><option value="">Actualisez les appareils appairés…</option></select></label>
+      <div class="profile-actions"><button class="btn sm" id="btSettings">Réglages Bluetooth Android</button><button class="btn sm" id="btRefresh">Actualiser la liste</button><button class="btn sm" id="btDisconnect">Déconnecter</button></div>
+      <p class="hint">Ce mode utilise Bluetooth classique SPP. Le nom « bluetoothprinter » ne garantit pas ce service. Le langage d’impression reste à choisir selon votre imprimante.</p>
+    </section>
     <div class="status" id="connRow"><span class="dot" id="connDot2"></span><span id="connText">Non connectée</span>
       <span class="grow"></span><button class="btn sm" id="btnConnect">Connecter</button></div>
     <div id="fileRow" hidden>
@@ -1114,12 +1121,12 @@ async function allAssets(){
 }
 async function allFonts(){await Promise.all(S.els.filter(e=>e.type==='text').map(ensureFont));if(document.fonts&&document.fonts.ready)await document.fonts.ready}
 
-const conn={mode:null,name:'',usb:null,port:null,writer:null,char:null,dev:null,nativeUsb:false};
+const conn={mode:null,name:'',usb:null,port:null,writer:null,char:null,dev:null,nativeUsb:false,nativeBt:false};
 const BLE_SERVICES=[0xffe0,0xff00,0x18f0,0xfee7,0xfff0,0xffb0,0xae30,0xffe5,'49535343-fe7d-4ae5-8fa9-9fafd205e455','e7810a71-73ae-499d-8c15-faa9aef0c3f2'];
 function isConnected(){
   const m=S.prefs.mode;
   if(m==='browser')return true;
-  return conn.mode===m&&!!(m==='androidusb'?conn.nativeUsb:m==='usb'?conn.usb:m==='serial'?conn.writer:m==='local'?conn.name:conn.char&&conn.dev&&conn.dev.gatt.connected);
+  return conn.mode===m&&!!(m==='androidbt'?conn.nativeBt:m==='androidusb'?conn.nativeUsb:m==='usb'?conn.usb:m==='serial'?conn.writer:m==='local'?conn.name:conn.char&&conn.dev&&conn.dev.gatt.connected);
 }
 function updateConn(){
   const m=S.prefs.mode,ok=m!=='browser'&&isConnected();
@@ -1132,12 +1139,14 @@ function updateConn(){
   const hints={
     browser:'Utilise le pilote de l\'imprimante installé sur l\'appareil. Dans la fenêtre d\'impression, vérifiez que le format du papier correspond à l\'étiquette et que les marges sont à zéro.',
     local:window.printmeDesktop?.platform==='win32'?'Envoi direct à la file Windows. Aucun logiciel supplémentaire à lancer.':'Envoi direct via le helper local (printme_helper.py) vers la file Windows — aucune fenêtre d\'impression. Lancez d\'abord : python printme_helper.py',
+    androidbt:'Connexion native Android à une imprimante déjà appairée. Autorisez « Appareils à proximité » lorsque le téléphone le demande.',
     androidusb:'Branchez votre imprimante avec un câble USB OTG. Autorisez l’accès USB puis choisissez le langage annoncé par son auto-test. La TS-M420 doit être testée sur votre matériel.',
     usb:'Envoi direct par câble USB (Chrome ou Edge). Sous Windows, le pilote WinUSB est nécessaire (outil Zadig) ; sur Android, la compatibilité OTG et les autorisations USB doivent être vérifiées.',
     serial:'Port série, ou Bluetooth appairé comme port COM (Chrome ou Edge sur ordinateur).',
     ble:'Bluetooth basse consommation (Chrome sur Android et ordinateur). La compatibilité dépend du service BLE et du protocole de l’imprimante. Bluetooth classique non pris en charge par ce mode.'};
   $('#modeHint').textContent=hints[m];
   $('#androidUsbRow').hidden=m!=='androidusb';
+  $('#androidBtRow').hidden=m!=='androidbt';
 }
 /* --- acces au helper d'impression local (file Windows) --- */
 const HELPER='http://127.0.0.1:8765';
@@ -1205,7 +1214,18 @@ async function unblockQueue(){
   }catch(e){toast('Déblocage impossible : '+(e.message||e),true)}
   finally{b.disabled=false;b.textContent='Débloquer la file'}
 }
+async function refreshBluetooth(){
+  const select=$('#androidBtSel'),current=select.value||S.prefs.bluetoothAddress||'';
+  const devices=(await window.printmeNative.bluetooth.list()).devices||[];
+  select.replaceChildren(h('option',{value:''},devices.length?'Sélectionner une imprimante…':'Aucun appareil appairé — ouvrez les réglages Android'));
+  devices.sort((a,b)=>String(a.name).localeCompare(String(b.name))).forEach(device=>select.append(h('option',{value:device.id,disabled:device.classic===false},device.name+' · '+device.id.slice(-5)+(device.classic===false?' (BLE uniquement)':''))));
+  if(devices.some(device=>device.id===current&&device.classic!==false))select.value=current;
+  return devices;
+}
+let connConnecting=false,connectionEpoch=0;
 async function connect(){
+  if(connConnecting)return;
+  connConnecting=true;$('#btnConnect').disabled=true;
   const m=S.prefs.mode;
   try{
     if(m==='browser')return;
@@ -1224,7 +1244,14 @@ async function connect(){
       return;
     }
     await disconnect();
-    if(m==='androidusb'){
+    const attempt=connectionEpoch;
+    if(m==='androidbt'){
+      const select=$('#androidBtSel');
+      if(!select.value){await refreshBluetooth();if(!select.value){toast('Choisissez votre imprimante dans la liste, puis cliquez sur Connecter.',true);return}}
+      const result=await window.printmeNative.bluetooth.connect({id:select.value});
+      if(attempt!==connectionEpoch||S.prefs.mode!==m){await window.printmeNative.bluetooth.disconnect();return}
+      conn.nativeBt=true;conn.name=result.name||select.selectedOptions[0].text;S.prefs.bluetoothAddress=select.value;savePrefs();
+    }else if(m==='androidusb'){
       const devices=(await window.printmeNative.usb.list()).devices;
       const select=$('#androidUsbSel'),current=select.value;
       select.replaceChildren(h('option',{value:''},'Choisir un appareil USB…'));
@@ -1267,7 +1294,7 @@ async function connect(){
     let msg=e.message||String(e);
     if(m==='usb'&&/denied|access/i.test(msg))msg='Windows occupe l\'imprimante : le mode USB direct ne peut pas la prendre. Choisissez « Direct (imprimante Windows) » dans Envoi.';
     toast('Connexion impossible : '+msg,true);
-  }
+  }finally{connConnecting=false;$('#btnConnect').disabled=false;updateConn()}
 }
 async function writeBytes(bytes){
   const m=S.prefs.mode;
@@ -1277,7 +1304,8 @@ async function writeBytes(bytes){
     if(j.error)throw new Error(j.error);
     return;
   }
-  if(m==='androidusb'){let bin='';for(let i=0;i<bytes.length;i+=8192)bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+8192));await window.printmeNative.usb.write({data:btoa(bin)})}
+  if(m==='androidbt'){let bin='';for(let i=0;i<bytes.length;i+=8192)bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+8192));await window.printmeNative.bluetooth.write({data:btoa(bin)})}
+  else if(m==='androidusb'){let bin='';for(let i=0;i<bytes.length;i+=8192)bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+8192));await window.printmeNative.usb.write({data:btoa(bin)})}
   else if(m==='usb'){for(let i=0;i<bytes.length;i+=4096){const chunk=bytes.slice(i,i+4096);const r=await conn.usb.d.transferOut(conn.usb.ep,chunk);if(r.status!=='ok'||r.bytesWritten!==chunk.length)throw new Error('Envoi USB incomplet : vérifiez le câble.')}}
   else if(m==='serial'){for(let i=0;i<bytes.length;i+=512)await conn.writer.write(bytes.slice(i,i+512))}
   else if(m==='ble'){
@@ -1334,7 +1362,7 @@ async function doPrint(){
       const restants=await checkJobs(true);
       if(restants.length)toast('Étiquette envoyée, mais '+restants.length+' travail(s) sont encore dans la file. Si rien ne sort : bouton « Imprimante » puis « Débloquer la file ».',true);
     }
-  }catch(e){if(conn.nativeUsb){conn.nativeUsb=false;updateConn()}toast('Échec de l\'impression : '+(e.message||e),true)}
+  }catch(e){if(conn.nativeBt){conn.nativeBt=false;updateConn()}if(conn.nativeUsb){conn.nativeUsb=false;updateConn()}toast('Échec de l\'impression : '+(e.message||e),true)}
   finally{printing=false;btn.disabled=false;btn.textContent='Imprimer'}
 }
 async function download(name,blob){
@@ -1343,8 +1371,9 @@ async function download(name,blob){
 const a=h('a',{href:URL.createObjectURL(blob),download:name});document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
 
 async function disconnect(){
-  try{if(conn.nativeUsb)await window.printmeNative.usb.disconnect();if(conn.writer){await conn.writer.close();conn.writer.releaseLock()}if(conn.port)await conn.port.close();if(conn.usb)await conn.usb.d.close();if(conn.dev?.gatt?.connected)conn.dev.gatt.disconnect()}catch(e){console.warn(e)}
-  Object.assign(conn,{mode:null,name:'',usb:null,port:null,writer:null,char:null,dev:null,nativeUsb:false});
+  connectionEpoch++;
+  try{if(conn.nativeBt||(connConnecting&&S.prefs.mode==='androidbt')){conn.nativeBt=false;await window.printmeNative.bluetooth.disconnect()}if(conn.nativeUsb)await window.printmeNative.usb.disconnect();if(conn.writer){await conn.writer.close();conn.writer.releaseLock()}if(conn.port)await conn.port.close();if(conn.usb)await conn.usb.d.close();if(conn.dev?.gatt?.connected)conn.dev.gatt.disconnect()}catch(e){console.warn(e)}
+  Object.assign(conn,{mode:null,name:'',usb:null,port:null,writer:null,char:null,dev:null,nativeUsb:false,nativeBt:false});
 }
 function profileName(initial,title='Enregistrer un profil',label='Nom du profil'){return new Promise(resolve=>{const dialog=$('#nameDialog');$('#nameDialog h2').textContent=title;$('#nameDialog label span').textContent=label;$('#profileName').value=initial;dialog.returnValue='cancel';dialog.addEventListener('close',()=>resolve(dialog.returnValue==='save'?$('#profileName').value:null),{once:true});dialog.showModal()})}
 function showHome(){
@@ -1360,6 +1389,12 @@ function showHome(){
   $('#home').showModal();
 }
 function setupStudio(){
+  $('#btSettings').onclick=async()=>{try{await window.printmeNative.bluetooth.openSettings()}catch(e){toast(e.message,true)}};
+  $('#btRefresh').onclick=async()=>{const button=$('#btRefresh');button.disabled=true;try{await refreshBluetooth();toast('Liste des appareils appairés actualisée')}catch(e){toast(e.message,true)}finally{button.disabled=false}};
+  $('#btDisconnect').onclick=async()=>{await disconnect();updateConn();toast('Imprimante déconnectée')};
+  $('#androidBtSel').onchange=async()=>{if(conn.nativeBt)await disconnect();S.prefs.bluetoothAddress=$('#androidBtSel').value;savePrefs();updateConn()};
+  if(window.printmeNative?.bluetooth?.addListener)window.printmeNative.bluetooth.addListener('disconnected',()=>{if(conn.mode==='androidbt'){conn.nativeBt=false;updateConn()}});
+
   $('#tsm420Preset').onclick=()=>{S.label.dpi=203;S.prefs.lang='tsplimg';S.prefs.nativeTspl=false;S.prefs.density=8;S.prefs.speed=4;S.prefs.invert=false;S.copies=1;$('#copies').value=1;bindPrefsValues();syncLabelUI();savePrefs();save();draw();toast('Profil TSPL 203 dpi appliqué — vérifiez le format du rouleau')};
   $('#btnHome').onclick=showHome;
   $('#homeClose').onclick=()=>$('#home').close();
@@ -1377,7 +1412,7 @@ function setupStudio(){
   $('#profileDelete').onclick=()=>{if(!select.value)return;delete profiles[select.value];localStorage.setItem('printme.profiles',JSON.stringify(profiles));refresh()};
   select.onchange=async()=>{const profile=profiles[select.value];if(!profile)return;await disconnect();Object.assign(S.prefs,profile.prefs);Object.assign(S.label,profile.label);bindPrefsValues();syncLabelUI();savePrefs();save();updateConn();draw();toast('Profil chargé')};
   const platform=window.printmeNative?.platform||window.printmeDesktop?.platform||'web';
-  $('#platformHint').textContent=platform==='ios'?'iPhone / iPad : impression système avec une imprimante compatible AirPrint. TS-M420 : compatibilité directe non confirmée.':platform==='android'?'Android : impression système selon les services installés. Dans Chrome, USB et BLE dépendent des capacités de votre imprimante.':'Ordinateur : impression système avec le pilote installé, ou assistant Windows pour les commandes brutes.';
+  $('#platformHint').textContent=platform==='ios'?'iPhone / iPad : impression système avec une imprimante compatible AirPrint. TS-M420 : compatibilité directe non confirmée.':platform==='android'?'Android : Bluetooth classique natif pour les appareils appairés, USB OTG ou impression système selon l’imprimante.':'Ordinateur : impression système avec le pilote installé, ou assistant Windows pour les commandes brutes.';
   let installEvent;
   addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvent=e;$('#btnInstall').hidden=false});
   $('#btnInstall').onclick=async()=>{if(installEvent){await installEvent.prompt();installEvent=null;$('#btnInstall').hidden=true}};
@@ -1412,6 +1447,8 @@ function bindPrefs(){
       toast('Étiquette de test envoyée — langage '+$('#lang').selectedOptions[0].text);
     }catch(e){toast('Échec du test : '+(e.message||e),true)}
   };
+  $('#mode option[value=androidbt]').hidden=!window.printmeNative?.bluetooth;
+  $('#mode option[value=androidbt]').disabled=!window.printmeNative?.bluetooth;
   $('#mode option[value=androidusb]').hidden=!window.printmeNative?.usb;
   $('#mode option[value=androidusb]').disabled=!window.printmeNative?.usb;
   if(window.printmeNative){$('#mode option[value=local]').disabled=true}

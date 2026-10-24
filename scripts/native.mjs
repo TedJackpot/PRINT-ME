@@ -5,6 +5,7 @@ import { Share } from '@capacitor/share';
 if (Capacitor.isNativePlatform()) {
   window.printmeNative = {
     platform: Capacitor.getPlatform(),
+    bluetooth: Capacitor.getPlatform()==='android'?registerPlugin('PrintMeBluetooth'):null,
     usb: Capacitor.getPlatform()==='android'?registerPlugin('PrintMeUsb'):null,
     print: (html) => Printer.printHtml({ name: 'PRINT ME — Étiquettes', html }),
     async save(name, blob) {

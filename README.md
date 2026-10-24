@@ -2,6 +2,16 @@
 
 Éditeur d’étiquettes en français pour ordinateur, Android et iOS. La base existante est conservée : modèles, champs variables, CSV, QR codes, codes-barres, images et sauvegardes locales.
 
+## Mise à jour Android 2.1.1 — Bluetooth classique
+
+La version Android ajoute **Bluetooth Android (appareils appairés)**. Le pont natif utilise RFCOMM/SPP sur les appareils préalablement appairés dans les réglages Android. Il demande `BLUETOOTH_CONNECT` sur Android 12 ou plus récent ; il ne lance pas de découverte Bluetooth et ne demande pas la localisation. Les appareils identifiés comme BLE uniquement sont affichés mais ne peuvent pas être sélectionnés pour ce transport.
+
+Dans Imprimante : choisir le mode Bluetooth Android, actualiser la liste, sélectionner explicitement l’imprimante, puis Connecter. Le nom `bluetoothprinter` ne prouve pas que le service SPP est pris en charge. Les délais de connexion et d’envoi sont limités et les opérations bloquantes sont exécutées hors du fil d’interface. Le format des commandes TSPL/ZPL/ESC-POS reste un réglage distinct du transport.
+
+L’APK 2.1.1 doit être signé avec la **même clé** que la version 2.1.0 et utilise le code de version 20101. La clé n’est pas publiée dans GitHub. Les tests navigateur simulent les appareils et les erreurs ; ils ne remplacent pas un essai sur l’imprimante physique.
+
+Sources : [permissions Android](https://developer.android.com/develop/connectivity/bluetooth/bt-permissions), [appareils appairés](https://developer.android.com/develop/connectivity/bluetooth/find-bluetooth-devices), [connexion RFCOMM](https://developer.android.com/develop/connectivity/bluetooth/connect-bluetooth-devices).
+
 ## Livraison 2.1.0
 
 Les fichiers Windows `.exe` et Android `.apk` ont été **fabriqués localement**. L’APK de distribution est signé avec une clé propre à PRINT ME et sa signature a été vérifiée. L’installeur Windows est un NSIS pour installation utilisateur, contrôlé par décompression ; il ne possède pas de signature commerciale d’éditeur. Les essais sur l’imprimante physique et sur les appareils de l’utilisateur restent nécessaires. Les ponts Windows et Android ont été exercés par les tests navigateur avec des transports simulés.
@@ -42,6 +52,7 @@ Les données et modèles sont stockés localement **par application et par origi
 |---|---|---|
 | Windows, macOS, Linux | Impression système | Pilote installé ; choisir le papier, l’échelle 100 % et les marges nulles |
 | Windows | Commandes RAW via assistant | File correcte et langage réellement compris par l’appareil |
+| Android natif | Bluetooth classique SPP | Appareil appairé, autorisation Appareils à proximité sur Android 12+, service SPP compatible ; essais matériel requis |
 | Android natif | USB OTG direct | Téléphone USB hôte, câble OTG, autorisation USB, sortie bulk et langage compatible ; essais matériel requis |
 | Android natif | Impression système | Service d’impression compatible installé ; ne garantit pas la TS-M420 |
 | iOS natif | Impression système | Imprimante compatible avec l’impression iOS/AirPrint ; TS-M420 non confirmée |

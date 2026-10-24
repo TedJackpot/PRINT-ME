@@ -1,12 +1,14 @@
 import {copyFile,readFile,writeFile} from 'node:fs/promises';
 const root='android/app/src/main';
 await copyFile('native/android/PrintMeUsbPlugin.java',`${root}/java/fr/printme/app/PrintMeUsbPlugin.java`);
+await copyFile('native/android/PrintMeBluetoothPlugin.java',`${root}/java/fr/printme/app/PrintMeBluetoothPlugin.java`);
 await writeFile(`${root}/java/fr/printme/app/MainActivity.java`,`package fr.printme.app;
 import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
   @Override public void onCreate(Bundle state) {
     registerPlugin(PrintMeUsbPlugin.class);
+    registerPlugin(PrintMeBluetoothPlugin.class);
     super.onCreate(state);
   }
 }
@@ -14,6 +16,12 @@ public class MainActivity extends BridgeActivity {
 const file=`${root}/AndroidManifest.xml`;
 let xml=await readFile(file,'utf8');
 if(!xml.includes('android.hardware.usb.host'))xml=xml.replace('<application','<uses-feature android:name="android.hardware.usb.host" android:required="false" />\n    <application');
+const permissions=[
+ '<uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />',
+ '<uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />',
+ '<uses-feature android:name="android.hardware.bluetooth" android:required="false" />'
+];
+for(const permission of permissions){const name=permission.match(/android:name="([^"]+)"/)[1];if(!xml.includes('android:name="'+name+'"'))xml=xml.replace('<application',permission+'\n    <application');}
 await writeFile(file,xml);
 // Identité visuelle et version de la même application que sur ordinateur.
 const config=JSON.parse(await readFile('package.json','utf8'));

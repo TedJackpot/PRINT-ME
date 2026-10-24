@@ -49,6 +49,34 @@ const {spawn}=require('node:child_process');
   await desktop.waitForFunction(()=>document.querySelector('#connText').textContent.includes('LABEL'));await desktop.locator('#dlgClose').click();await desktop.locator('#btnPrint').click();await desktop.waitForFunction(()=>window.sentWindows?.includes('BITMAP '));
   assert.ok(await desktop.evaluate(()=>sentWindows.endsWith('PRINT 1,1\r\n')));
   console.log('USB Android et file Windows simulés : données TSPL transmises au pont attendu.');
+  const bluetooth=await browser.newPage({viewport:{width:390,height:844}});
+  const btErrors=[];bluetooth.on('pageerror',error=>btErrors.push(error.message));
+  await bluetooth.addInitScript(()=>{
+    window.btConnected=false;window.btAttempts=0;window.btFail=false;
+    window.printmeNative={platform:'android',bluetooth:{
+      list:async()=>({devices:[{id:'00:11:22:33:44:55',name:'bluetoothprinter',classic:true},{id:'AA:BB:CC:DD:EE:FF',name:'BLE appareil',classic:false}]}),
+      connect:async({id})=>{window.btAttempts++;if(id!=='00:11:22:33:44:55')throw Error('Mauvaise sélection');window.btConnected=true;return {name:'bluetoothprinter'}},
+      disconnect:async()=>{window.btConnected=false},
+      openSettings:async()=>{},
+      write:async({data})=>{if(window.btFail)throw Error('Connexion Bluetooth perdue');if(!window.btConnected)throw Error('Déconnectée');window.sentBluetooth=atob(data)}
+    },print:async()=>{},save:async()=>{}};
+  });
+  await bluetooth.goto('http://127.0.0.1:8088/');await bluetooth.locator('#homeClose').click();await bluetooth.locator('#btnPrinter').click();
+  await bluetooth.locator('#mode').selectOption('androidbt');await bluetooth.locator('#btRefresh').click();
+  await bluetooth.waitForFunction(()=>document.querySelector('#androidBtSel option[value="AA:BB:CC:DD:EE:FF"]')?.disabled===true);
+  assert.equal(await bluetooth.locator('#androidBtSel option[value="AA:BB:CC:DD:EE:FF"]').evaluate(option=>option.disabled),true);
+  await bluetooth.locator('#btnConnect').click();assert.equal(await bluetooth.evaluate(()=>btAttempts),0); // Never guess a paired device.
+  await bluetooth.locator('#androidBtSel').selectOption('00:11:22:33:44:55');await bluetooth.locator('#btnConnect').click();
+  await bluetooth.waitForFunction(()=>document.querySelector('#connText').textContent.includes('bluetoothprinter'));
+  await bluetooth.locator('#dlgClose').click();await bluetooth.locator('#btnPrint').click();await bluetooth.waitForFunction(()=>window.sentBluetooth?.includes('BITMAP '));
+  assert.ok(await bluetooth.evaluate(()=>sentBluetooth.endsWith('PRINT 1,1\r\n')));
+  await bluetooth.waitForFunction(()=>!document.querySelector('#btnPrint').disabled);
+  await bluetooth.evaluate(()=>{window.btFail=true});await bluetooth.locator('#btnPrint').click();
+  await bluetooth.waitForFunction(()=>!document.querySelector('#btnPrint').disabled);
+  await bluetooth.locator('#btnPrinter').click();assert.equal(await bluetooth.locator('#connText').textContent(),'Non connectée');
+  assert.deepEqual(btErrors,[]);
+  console.log('Bluetooth Android simulé : sélection explicite, exclusion BLE, envoi TSPL et erreur de transport vérifiés.');
+
 
  }finally{if(browser)await browser.close();server.kill();}
 })().catch(error=>{console.error(error);process.exitCode=1});
