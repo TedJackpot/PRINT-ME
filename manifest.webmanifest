@@ -7,8 +7,8 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#e4e9f0",
-  "theme_color": "#2a3bd0",
+  "background_color": "#f4f7f6",
+  "theme_color": "#146956",
   "categories": [
     "business",
     "productivity",
@@ -16,16 +16,17 @@
   ],
   "icons": [
     {
-      "src": "vendor/icone.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
+      "src": "vendor/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "vendor/icone.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
+      "src": "vendor/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
-  ]
+  ],
+  "id": "./"
 }

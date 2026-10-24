@@ -1,0 +1,85 @@
+{
+  "name": "print-me",
+  "version": "2.1.0",
+  "private": true,
+  "description": "Création et impression d'étiquettes sur ordinateur et mobile",
+  "author": "TedJackpot",
+  "license": "UNLICENSED",
+  "main": "desktop/main.cjs",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "npm run build && electron .",
+    "test": "node --test tests/*.test.cjs",
+    "desktop:dist": "npm run build && electron-builder",
+    "android:init": "npm run build && cap add android && node scripts/android-setup.mjs",
+    "ios:init": "npm run build && cap add ios",
+    "mobile:sync": "npm run build && cap sync",
+    "android:open": "cap open android",
+    "ios:open": "cap open ios",
+    "test:ui": "node tests/browser.cjs",
+    "windows:installer": "npm run build && electron-builder --win --x64 --dir --publish never && node scripts/windows-installer.mjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/filesystem": "^8.0.0",
+    "@capacitor/ios": "8.5.3",
+    "@capacitor/share": "^8.0.0",
+    "@capgo/capacitor-printer": "^8.0.0",
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/montserrat": "^5.3.0",
+    "@fontsource/roboto": "^5.3.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3",
+    "electron": "45.0.0",
+    "electron-builder": "26.15.3",
+    "esbuild": "^0.25.0",
+    "playwright": "1.64.1"
+  },
+  "build": {
+    "appId": "fr.printme.app",
+    "productName": "PRINT ME",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "www/**/*",
+      "desktop/**/*",
+      "package.json",
+      "!**/node_modules/**"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "signAndEditExecutable": false,
+      "extraResources": [
+        {
+          "from": "local-driver",
+          "to": "label-driver"
+        }
+      ],
+      "icon": "assets/app.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.productivity"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Office"
+    },
+    "asarUnpack": [
+      "desktop/windows-print.ps1"
+    ]
+  }
+}

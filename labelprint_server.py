@@ -30,7 +30,7 @@ from functools import partial
 RACINE = os.path.dirname(os.path.abspath(__file__))
 PORT_APP_PREFERE = 8080
 PORT_HELPER = 8765
-VERSION = "1.0"
+VERSION = "2.0"
 
 
 def port_occupe(port: int) -> bool:

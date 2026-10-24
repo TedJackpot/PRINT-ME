@@ -1,0 +1,60 @@
+PRINT ME STUDIO 2.1.0 — INSTALLATION
+
+WINDOWS 64 BITS
+1. Ouvrir PRINT-ME-Setup-2.1.0-Windows-x64.exe et suivre l’installation.
+2. Ouvrir PRINT ME depuis le Bureau ou le menu Démarrer.
+3. Dans Imprimante, le bouton « Installer le pilote LABEL fourni » ouvre le
+   pilote que vous avez transmis. Il peut demander les droits administrateur.
+   Cette étape n’est utile que si le pilote de votre imprimante n’est pas installé.
+4. Brancher et allumer l’imprimante. Pour commencer, choisir l’impression
+   système et la file LABEL (si c’est bien celle de votre imprimante).
+5. Vérifier le format du rouleau, l’échelle 100 % et les marges nulles.
+   Vous pouvez ensuite essayer « Direct (imprimante Windows) » et les réglages
+   TS-M420 / LABEL : TSPL image, 203 dpi, une copie.
+Aucun Python ou serveur séparé à démarrer avec cette version Windows.
+L’installeur ne possède pas de signature commerciale d’éditeur Windows.
+
+ANDROID
+1. Copier PRINT-ME-2.1.0-Android.apk sur le téléphone et l’ouvrir.
+   Android demande une autorisation d’installation pour la source utilisée.
+2. Pour un appareil USB : brancher la TS-M420 avec un câble/adaptateur OTG,
+   ouvrir Imprimante, choisir « USB direct Android (OTG) », Connecter,
+   sélectionner l’imprimante si demandé et autoriser l’accès USB.
+3. Appliquer TSPL image, 203 dpi, puis le format réel du rouleau.
+4. Tester une seule étiquette. Le pilote Windows n’est pas utilisé sur Android.
+Android 7 ou ultérieur, port USB hôte et connexion OTG compatibles nécessaires.
+Le mode Bluetooth des navigateurs n’est pas une prise en charge universelle
+Bluetooth. Cette livraison Android est principalement prévue pour USB OTG.
+
+UTILISATION
+Accueil : modèles avec aperçu, nouvelle étiquette et créations enregistrées.
+Éléments : texte, image, rectangle, ligne, QR code et code-barres.
+Données : variables et import de tableaux CSV, une étiquette par ligne.
+Enregistrer ce modèle : conserve le dessin sur cet appareil.
+Profils : conserve connexion, langage, résolution et dimensions.
+Exporter : permet de transférer un modèle JSON à un autre appareil.
+Les modèles ne se synchronisent pas automatiquement entre ordinateur et téléphone.
+Inter, Montserrat et Roboto sont embarquées. Les autres polices marquées
+« Internet » nécessitent une connexion et peuvent avoir une police de repli.
+
+VÉRIFICATIONS ET LIMITES
+Le pilote fourni déclare LABEL, TSPL et 203 dpi. Il ne nomme pas TS-M420.
+Les compilations Android et Windows ont réussi. La signature de l’APK et
+l’intégrité de l’installeur ont été vérifiées. Dix tests de code et les tests
+navigateur (accueil, édition, profils, hors ligne, USB Android et file Windows
+simulés) passent. Aucun test de sortie papier sur votre TS-M420 n’a pu être fait.
+Une transmission au spooler ne prouve pas que le papier est sorti.
+
+IPHONE / IPAD
+Le projet iOS figure dans les sources. Il ne s’agit pas encore d’un IPA
+installable : sa compilation et sa signature requièrent un Mac avec Xcode
+et la configuration Apple adaptée. L’impression prévue utilise l’impression
+système iOS ; la compatibilité directe TS-M420 n’est pas confirmée.
+
+GITHUB
+Les sources sont proposées dans une branche de développement du dépôt GitHub.
+Les fichiers de livraison initiaux ont été fabriqués localement.
+
+RÉFÉRENCE
+L’interface et les fonctions s’inspirent des éditeurs d’étiquettes comme
+Labelnize. PRINT ME utilise son propre code ; le code de Labelnize n’a pas été copié.

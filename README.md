@@ -1,106 +1,106 @@
-# PRINT ME
+# PRINT ME Studio
 
-Application d'impression d'étiquettes pour le Pass-Service : formulaire, aperçu fidèle, modèles prêts à l'emploi, import de lots (Vinted, Colissimo, bons de commande) et envoi direct vers une imprimante thermique.
+Éditeur d’étiquettes en français pour ordinateur, Android et iOS. La base existante est conservée : modèles, champs variables, CSV, QR codes, codes-barres, images et sauvegardes locales.
 
-L'application tient dans **un seul fichier `index.html`** : elle fonctionne hors ligne, sans compte, sans serveur obligatoire. Seule l'impression directe vers Windows utilise un petit helper Python local.
+## Livraison 2.1.0
 
-## Ouvrir l'application sans rien installer
+Les fichiers Windows `.exe` et Android `.apk` ont été **fabriqués localement**. L’APK de distribution est signé avec une clé propre à PRINT ME et sa signature a été vérifiée. L’installeur Windows est un NSIS pour installation utilisateur, contrôlé par décompression ; il ne possède pas de signature commerciale d’éditeur. Les essais sur l’imprimante physique et sur les appareils de l’utilisateur restent nécessaires. Les ponts Windows et Android ont été exercés par les tests navigateur avec des transports simulés.
 
-**https://site-38181ec2e74446f585d6d6c069e7f97d.freebuff.page**
+Le pilote transmis par l’utilisateur contient un INF « TSPL driver », le modèle `LABEL` et une résolution 203 dpi dans le GPD. Son outil d’installation est inclus **dans la livraison Windows**, avec un bouton explicite dans le dialogue Imprimante. Il n’est jamais exécuté automatiquement. La compatibilité physique TS-M420 reste à confirmer : ce modèle n’est pas nommé dans l’INF.
 
-Le lien ouvre l'application complète dans le navigateur (Chrome, Edge, Firefox, Safari, Android). Une fois la page chargée, elle fonctionne **hors ligne** grâce au service worker, et peut être installée sur l'écran d'accueil.
+La livraison initiale a été fabriquée localement. Les sources sont proposées sur la branche `feat/print-me-studio-2-1`. Le projet iOS est synchronisé, mais **aucun IPA n’a été fabriqué** : il nécessite Xcode et une configuration de signature Apple. Le produit s’inspire des fonctions courantes d’un éditeur comme Labelnize ; il ne contient pas son code.
 
-Pour imprimer en mode **Direct (imprimante Windows)** depuis cette version en ligne, lancez le helper sur le poste :
+## Installer et développer
 
-```bash
+Node.js 22 ou ultérieur et npm sont nécessaires pour fabriquer les applications.
+
+```sh
+npm ci
+npm test
+npm run build
+npm start
+```
+
+- `npm start` ouvre une fenêtre Electron indépendante.
+- `npm run windows:installer` génère un installeur NSIS depuis Linux une fois le compilateur NSIS disponible dans le cache electron-builder. Le script n’exécute pas de code Windows.
+- `npm run desktop:dist` crée l’installeur de la plateforme courante. La version Windows utilise directement PowerShell et le spooler, sans Python.
+- `npm run android:init` crée le projet Android et installe le pont USB natif. Puis `npm run android:open` pour Android Studio (SDK et Java 21 nécessaires).
+- `npm run ios:init` crée le projet iOS. Puis `npm run ios:open` sur un Mac avec Xcode. Une signature Apple est nécessaire pour installer sur un iPhone physique et distribuer via TestFlight/App Store.
+- Après une modification web : `npm run mobile:sync`. Le code USB Android est recopié avec `node scripts/android-setup.mjs` si vous le modifiez.
+
+Les dossiers `android/`, `ios/` et `www/` se régénèrent et ne sont pas versionnés. `package-lock.json` fixe les dépendances réellement installées.
+
+### Sans outils de développement
+
+L’éditeur fonctionne aussi avec les lanceurs Python existants ou comme application web installable depuis une origine HTTPS. Le bouton Installer apparaît dans les navigateurs qui proposent l’installation. Sur iPhone : Safari → Partager → Sur l’écran d’accueil. Le cache hors ligne conserve les ressources de base ; Inter, Montserrat et Roboto sont embarquées ; les autres polices indiquées « Internet » nécessitent une connexion.
+
+Les données et modèles sont stockés localement **par application et par origine**. Exportez vos modèles JSON avant de changer d’application ou d’adresse : les données du navigateur ne sont pas transférées automatiquement vers Electron ou Capacitor.
+
+## Impression et compatibilité
+
+| Plateforme | Mode | Conditions |
+|---|---|---|
+| Windows, macOS, Linux | Impression système | Pilote installé ; choisir le papier, l’échelle 100 % et les marges nulles |
+| Windows | Commandes RAW via assistant | File correcte et langage réellement compris par l’appareil |
+| Android natif | USB OTG direct | Téléphone USB hôte, câble OTG, autorisation USB, sortie bulk et langage compatible ; essais matériel requis |
+| Android natif | Impression système | Service d’impression compatible installé ; ne garantit pas la TS-M420 |
+| iOS natif | Impression système | Imprimante compatible avec l’impression iOS/AirPrint ; TS-M420 non confirmée |
+| Chrome/Edge compatibles | WebUSB, série ou BLE | API disponible et protocole matériel compatible ; BLE n’est pas Bluetooth classique |
+
+Le README historique identifiait une **TOUSEI TS-M420, USB 0416:5011, auto-test TSPL**. Cette information vient du projet, pas d’une nouvelle détection matérielle. Vérifiez l’auto-test de votre appareil. Aucun profil de future imprimante n’est déclaré compatible sans connaître son langage et sa connexion.
+
+Pour la TS-M420, commencer avec **TSPL — aperçu fidèle (image)**, 203 dpi seulement si l’auto-test confirme cette résolution, et une seule copie. Ce rendu préserve accents, polices, alignements, rotations et logos. Il faut choisir le bon format d’étiquette et le bon capteur. Le mode natif simplifié utilise désormais `BAR`, `BOX` et une syntaxe QR corrigée, mais garde les limites des polices embarquées ; l’interface prévient avant l’envoi. ZPL utilise un rendu raster `^GFA`. ESC/POS est destiné aux appareils qui annoncent explicitement ce langage.
+
+**Des commandes imprimées en clair ne prouvent pas que le pilote est fautif.** Un langage incompatible ou un mauvais chemin d’envoi sont également possibles. Windows peut transmettre des données RAW sans conversion ; le nom « Generic / Text Only » n’entraîne donc plus un blocage arbitraire. Le script PowerShell ne supprime aucune file et ne change plus l’imprimante par défaut.
+
+Les profils enregistrent connexion, langage, format et réglages. Ils ne détectent pas automatiquement le protocole d’une imprimante. Ne relancez pas un envoi partiellement interrompu sans vérifier la file et le papier pour éviter les doublons.
+
+### Impression Windows
+
+L’application Electron communique avec PowerShell par un pont IPC isolé, sans ouvrir de port HTTP. Les paramètres sont transmis en JSON sur l’entrée standard, jamais interpolés dans du code PowerShell. `desktop/windows-print.ps1` liste les imprimantes et transmet les octets au spooler avec `StartDocPrinter`/`WritePrinter` en RAW. Les écritures partielles et les erreurs d’envoi sont prises en charge. Le script est livré hors de l’archive ASAR pour être lu par PowerShell.
+
+L’ancien assistant Python reste utilisable pour la version navigateur :
+
+```sh
 python helper/printme_helper.py
 ```
 
-La page HTTPS le contacte sur `http://127.0.0.1:8765` ; le helper autorise explicitement cette origine (`Access-Control-Allow-Private-Network`). Sans helper, les modes « Navigateur », « USB » et « Bluetooth » restent disponibles.
+Il écoute uniquement sur `127.0.0.1:8765`, contrôle les origines HTTP et valide les requêtes. Il n’est pas nécessaire à la version Electron. Le pilote local se place dans `local-driver/` lors d’une fabrication qui l’inclut. La copie fournie par l’utilisateur figure dans sa sauvegarde privée ; elle n’est pas publiée dans ce dépôt. Les builds GitHub n’incluent donc pas ce pilote et une installation du pilote via Windows reste possible séparément. Le pilote reste un composant tiers distinct.
 
-## Démarrage rapide
+## Vérification et fabrication GitHub
 
-| Système | Commande |
-|---|---|
-| Windows | double-clic sur `Demarrer-Windows.bat` |
-| macOS | double-clic sur `Demarrer-Mac.command` (clic droit → Ouvrir si macOS bloque) |
-| Linux | `chmod +x Demarrer-Linux.sh && ./Demarrer-Linux.sh` |
-| Sans Python | ouvrir `index.html` dans Chrome, Edge ou Firefox |
-
-Le lanceur démarre un petit serveur local et ouvre le navigateur sur l'application. Sans Python, tout fonctionne sauf le mode d'impression **Direct (imprimante Windows)**.
-
-## Impression
-
-Trois modes disponibles dans **Imprimante** :
-
-- **Direct (imprimante Windows)** — l'application envoie les octets bruts au spooler via `helper/printme_helper.py` (port `8765`). C'est le mode le plus fiable, et le seul qui donne accès au choix de la file d'impression.
-- **Navigateur (fenêtre d'impression)** — passer par la boîte de dialogue système.
-- **USB direct / Bluetooth (BLE)** — pour Android avec un câble OTG ou une imprimante BLE.
-
-Le panneau **Imprimante** permet aussi de choisir la file d'impression, de lister les travaux en cours et de **débloquer la file** : un travail resté en « En pause / Retenu » bloque le port USB et empêche toute impression suivante. C'est la cause la plus fréquente du « rien ne sort ».
-
-### Helper d'impression
-
-```bash
-python helper/printme_helper.py          # écoute sur http://127.0.0.1:8765
+```sh
+npm test
+npx playwright install chromium
+npm run test:ui
+python -m unittest discover -s tests -p 'test_*.py'
+npm run build
 ```
 
-| Route | Rôle |
-|---|---|
-| `GET /printers` | liste des files d'impression Windows |
-| `POST /print` | envoi brut des octets à la file choisie |
-| `GET /jobs?printer=...` | travaux de la file, avec état décodé (erreur, pause, retenu) |
-| `POST /unblock` | annule les travaux bloqués et remet la file en ligne |
+Le workflow **Applications PRINT ME** prépare Windows `.exe`, macOS `.dmg`, Linux `.AppImage`, un **APK Android de test** et une application **iOS pour simulateur**. L’APK debug n’est pas une livraison Play Store. Les versions de distribution nécessitent une signature stable ; macOS nécessite signature/notarisation pour une distribution sans alerte. Le workflow ne publie pas automatiquement de release ni de version en boutique.
 
-Aucune dépendance externe : uniquement la bibliothèque standard Python (`ctypes`, `http.server`).
+## Structure
 
-## Fonctionnalités
+- `index.html` : éditeur existant et logique d’impression.
+- `assets/studio.css` : interface responsive PRINT ME Studio.
+- `desktop/` : fenêtre Electron isolée et impression système.
+- `scripts/` : construction web, ponts natifs et préparation Android.
+- `native/android/` : transport USB OTG Android.
+- `helper/` : assistant RAW Windows.
+- `tests/` : tests de protocoles et du spooler simulé.
+- `.github/workflows/build.yml` : vérifications et fabrication multiplateforme.
 
-- Aperçu fidèle au millimètre, formats 100 × 150, 102 × 152, 89 × 36, 54 × 101, 25 × 54, 54 × 70 (DYMO), etc.
-- Modèles fournis : Pass-Service / Colissimo, DYMO Expédition, DYMO Adresse, colis générique, bon de commande Vinted 40 × 60 et 60 × 80, courrier, étiquette produit, prix étagère.
-- Champs dynamiques (`{{destinataire}}`, `{{suivi}}`, `{{commande}}`, `{{date}}`, `{{n}}`, `{{nb}}`…) et onglet **Données** pour les remplir d'un geste.
-- Import de lots : collage d'un tableau Excel / CSV, une étiquette par ligne.
-- Code-barres Code 128 et QR natifs (générateur embarqué, hors ligne).
-- Annuler / rétablir, enregistrement des modèles, export et import de modèles en `.json`.
-- Application installable (PWA) avec cache hors ligne.
+## Sources techniques
 
-## Contenu
-
-```
-index.html              l'application complète
-Demarrer-Windows.bat    lanceur Windows
-Demarrer-Mac.command    lanceur macOS
-Demarrer-Linux.sh       lanceur Linux
-labelprint_server.py    serveur local multiplateforme
-Installer-PRINT-ME.ps1  remet la file d'impression d'aplomb
-helper/printme_helper.py  envoi brut + gestion de la file Windows
-vendor/qrcode.min.js    générateur de QR code (hors ligne)
-vendor/icone.svg        icône de l'application
-manifest.webmanifest    application installable
-sw.js                   cache hors ligne
-modeles/                partage de modèles
-LISEZMOI.txt            mode d'emploi détaillé
-```
-
-## Dépannage : « l'étiquette sort avec du texte »
-
-Si le papier sort avec les commandes en clair (`TEXT 32,128,...`, `SIZE 100 mm,150 mm`, `PRINT 1,1`), ce n'est pas l'imprimante qui est en cause mais le **pilote de la file d'impression**. Le pilote `Generic / Text Only` remplace les codes de commande par des caractères au lieu de les transmettre.
-
-L'application affiche désormais le pilote de chaque file et marque les files fautives :
-
-```
-PRINT ME  (Generic / Text Only)  ⛔ texte
-LABELPASS  (LABEL)
-```
-
-Une file marquée ⛔ est **refusée à l'impression** et n'est plus jamais choisie automatiquement. Pour la remplacer par une file saine, exécutez `Installer-PRINT-ME.ps1` (clic droit → Exécuter avec PowerShell) : il supprime la file fautive et la recrée avec le pilote de l'imprimante.
-
-## Limites connues
-
-- **Le langage de l'imprimante n'est pas deviné automatiquement.** L'appareil concerné est une TOUSEI TS-M420 (`USB 0416:5011`), dont l'auto-test annonce TSPL. Tant que la file d'impression n'utilise pas un pilote qui transmet les octets, aucun langage ne peut fonctionner.
-- L'impression directe suppose que l'imprimante est **présente** dans Windows : une imprimante débranchée laisse la file hors ligne et bloque les envois.
-- Le mode Bluetooth dépend du navigateur et de l'imprimante ; il n'est pas universel.
+- [Microsoft : données RAW](https://learn.microsoft.com/en-us/windows-hardware/drivers/print/raw-data-type)
+- [Electron : impression](https://www.electronjs.org/docs/latest/api/web-contents#contentsprintoptions-callback)
+- [Capacitor : code Android natif](https://capacitorjs.com/docs/android/custom-code)
+- [Capgo Printer : pont d’impression système Android/iOS](https://github.com/Cap-go/capacitor-printer)
 
 ## Licence
 
-Usage interne Pass-Service. Aucune licence open source n'est accordée pour l'instant.
+Code applicatif : usage interne Pass-Service, aucune licence open source accordée. Les bibliothèques tierces conservent leurs licences ; Electron inclut ses notices tierces, Capgo Printer est sous MPL-2.0. Conserver les mentions de licence dans toute redistribution.
+
+## Signature Android et mises à jour
+
+La clé de signature de cette livraison et ses paramètres sont conservés dans la sauvegarde de maintenance remise à l’utilisateur, séparément des sources publiques. Elle est nécessaire pour signer des mises à jour installables par-dessus cette version. Ne pas publier cette sauvegarde de signature dans un dépôt public. Le fichier APK n’est pas une publication Play Store.
