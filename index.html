@@ -3,19 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#2a3bd0">
+<meta name="theme-color" content="#146956">
 <meta name="description" content="PRINT ME - editeur et impression d'etiquettes (TSPL, ZPL, ESC/POS) pour imprimantes thermiques.">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>PRINT ME — Étiquettes</title>
+<link rel="apple-touch-icon" href="vendor/icon-192.png">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="vendor/icone.svg" type="image/svg+xml">
 <!-- Bibliotheque QR chargee en local : l'application fonctionne sans Internet -->
 <script src="vendor/qrcode.min.js"></script>
 <script>window.qrcode||document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"><\/script>');</script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&display=swap">
+
+
+<link rel="stylesheet" href="assets/fonts.css">
 <style>
 :root{
   --bg:#e4e9f0;--panel:#fff;--panel2:#f2f5f9;--ink:#15202b;--mute:#586676;--line:#d0d8e2;
@@ -131,15 +132,18 @@ dialog .dbody{padding:12px 16px 16px;overflow:auto;max-height:calc(92dvh - 60px)
   .btn{transition:background .12s,filter .12s}
 }
 </style>
+<link rel="stylesheet" href="assets/studio.css">
 </head>
 <body data-tab="label">
 <header class="top">
-  <h1>PRINT ME</h1>
+  <div class="brand"><span class="brandmark" aria-hidden="true">P</span><div><h1>PRINT ME<span class="version">STUDIO</span></h1><span class="brandline">Vos idées, prêtes à imprimer.</span></div></div>
   <span class="meta" id="sizeInfo"></span>
   <div class="grow"></div>
+  <button class="btn" id="btnHome">Accueil</button>
   <button class="btn icon" id="undo" aria-label="Annuler" title="Annuler (Ctrl+Z)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
   <button class="btn icon" id="redo" aria-label="Rétablir" title="Rétablir (Ctrl+Y)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button>
   <label class="copies">Copies <input id="copies" type="number" min="1" max="999" value="1" inputmode="numeric"></label>
+  <button class="btn" id="btnInstall" hidden>Installer l’application</button>
   <button class="btn" id="btnPrinter"><span class="dot" id="connDot"></span>Imprimante</button>
   <button class="btn primary" id="btnPrint">Imprimer</button>
 </header>
@@ -237,17 +241,38 @@ dialog .dbody{padding:12px 16px 16px;overflow:auto;max-height:calc(92dvh - 60px)
   </aside>
 </main>
 
+<dialog id="home" class="home-dialog">
+  <div class="home-top"><strong>PRINT ME <span>STUDIO</span></strong><button class="btn" id="homeClose">Revenir à l’éditeur</button></div>
+  <div class="home-body"><p class="eyebrow">VOTRE ATELIER D’ÉTIQUETTES</p><h2>Une idée.<br>Une étiquette parfaite.</h2><p class="home-intro">Choisissez un modèle, ajoutez votre touche et imprimez.<br>Vos créations restent sur votre appareil.</p>
+  <div class="home-actions"><button class="btn primary" id="newLabel">+ Créer une étiquette vierge</button><button class="btn" id="homePrinter">Configurer mon imprimante</button></div>
+  <div class="home-section"><h3>Commencer avec un modèle</h3><span>Modifiables, prêts à personnaliser</span></div><div class="template-gallery" id="templateGallery"></div>
+  <div class="home-section"><h3>Mes créations</h3><span>Enregistrées sur cet appareil</span></div><div class="saved-gallery" id="homeSaved"></div>
+  <p class="hint">Texte · Images · QR codes · Codes-barres · Import CSV · Impression par lots</p></div>
+</dialog>
 <dialog id="dlg">
   <div class="dhead"><h2>Imprimante</h2><button class="btn sm" id="dlgClose">Fermer</button></div>
   <div class="dbody">
+    <section class="printer-card"><strong>Votre espace d’impression</strong><p class="hint">Choisissez une imprimante, son langage et votre connexion. Un profil mémorise vos réglages pour la prochaine fois.</p></section>
+    <label class="f"><span>Profil</span><select id="profile"><option value="">Réglages actuels</option></select></label>
+    <div class="profile-actions"><button class="btn sm" id="profileSave">Enregistrer ce profil</button><button class="btn sm" id="profileDelete">Supprimer le profil</button></div>
+    <p class="hint" id="platformHint"></p>
     <label class="f"><span>Envoi</span><select id="mode">
       <option value="browser">Navigateur (fenêtre d'impression)</option>
       <option value="local">Direct (imprimante Windows)</option>
-      <option value="usb">USB direct</option>
+      <option value="androidbt" hidden>Bluetooth Android (appareils appairés)</option>
+      <option value="androidusb" hidden>USB direct Android (OTG)</option>
+      <option value="usb">USB direct navigateur</option>
       <option value="serial">Port série / Bluetooth (PC)</option>
       <option value="ble">Bluetooth basse consommation</option>
     </select></label>
     <p class="hint" id="modeHint"></p>
+    <label class="f" id="androidUsbRow" hidden><span>Appareil USB</span><select id="androidUsbSel"><option value="">Cliquez sur Connecter pour rechercher</option></select></label>
+    <section id="androidBtRow" hidden>
+      <p class="hint">1. Appairez l’imprimante dans Android. 2. Actualisez la liste. 3. Choisissez l’appareil et connectez-le.</p>
+      <label class="f"><span>Imprimante</span><select id="androidBtSel"><option value="">Actualisez les appareils appairés…</option></select></label>
+      <div class="profile-actions"><button class="btn sm" id="btSettings">Réglages Bluetooth Android</button><button class="btn sm" id="btRefresh">Actualiser la liste</button><button class="btn sm" id="btDisconnect">Déconnecter</button></div>
+      <p class="hint">Ce mode utilise Bluetooth classique SPP. Le nom « bluetoothprinter » ne garantit pas ce service. Le langage d’impression reste à choisir selon votre imprimante.</p>
+    </section>
     <div class="status" id="connRow"><span class="dot" id="connDot2"></span><span id="connText">Non connectée</span>
       <span class="grow"></span><button class="btn sm" id="btnConnect">Connecter</button></div>
     <div id="fileRow" hidden>
@@ -256,11 +281,13 @@ dialog .dbody{padding:12px 16px 16px;overflow:auto;max-height:calc(92dvh - 60px)
         <button class="btn sm" id="btnJobs">Vérifier la file</button>
         <button class="btn sm" id="btnUnblock">Débloquer la file</button>
       </div>
-      <p class="hint" id="jobsInfo">Un travail resté « Retenu » bloque le port : plus rien ne sort tant qu'il n'est pas enlevé.</p>
+      <p class="hint" id="jobsInfo">Vérifiez les travaux en attente avant de relancer une impression.</p>
     </div>
+    <button class="btn" id="installDriver" hidden>Installer le pilote LABEL fourni</button>
+    <button class="btn" id="tsm420Preset">Réglages TS-M420 / LABEL · TSPL · 203 dpi</button><p class="hint">Conservez le format réel de votre rouleau. Lancez une seule étiquette pour vérifier le réglage.</p>
     <h3>Réglages d'impression</h3>
-    <label class="f"><span>Langage</span><select id="lang"><option value="tspl">TSPL — texte natif (étiquettes)</option><option value="tsplimg">TSPL — image (bitmap)</option><option value="zpl">ZPL (Zebra)</option><option value="escpos">ESC/POS (tickets)</option></select></label>
-    <label class="chk" id="nativeRow"><input type="checkbox" id="nativeTspl"> Rendu net — texte/barre/QR natifs (recommandé)</label>
+    <label class="f"><span>Langage</span><select id="lang"><option value="tspl">TSPL — texte natif simplifié</option><option value="tsplimg">TSPL — aperçu fidèle (image)</option><option value="zpl">ZPL — aperçu fidèle (image)</option><option value="escpos">ESC/POS (tickets)</option></select></label>
+    <label class="chk" id="nativeRow"><input type="checkbox" id="nativeTspl"> Texte natif simplifié (polices et styles limités)</label>
     <div class="f"><span></span><button class="btn sm" id="btnTestLang" style="width:max-content">Tester ce langage (1 étiquette)</button></div>
     <label class="f"><span>Densité</span><span class="inp"><input id="density" type="number" min="0" max="15" step="1"><em>0 à 15</em></span></label>
     <label class="f"><span>Vitesse</span><span class="inp"><input id="speed" type="number" min="1" max="10" step="1"><em>1 à 10</em></span></label>
@@ -278,6 +305,7 @@ dialog .dbody{padding:12px 16px 16px;overflow:auto;max-height:calc(92dvh - 60px)
     <p class="hint">Les commandes (.prn) peuvent être envoyées en impression brute depuis Windows.</p>
   </div>
 </dialog>
+<dialog id="nameDialog"><form method="dialog"><div class="dhead"><h2>Enregistrer un profil</h2></div><div class="dbody"><label class="f"><span>Nom du profil</span><input id="profileName" required maxlength="80" placeholder="TS-M420 USB"></label><div class="profile-actions"><button class="btn" value="cancel" formnovalidate>Annuler</button><button class="btn primary" value="save">Enregistrer</button></div></div></form></dialog>
 <div class="toast" id="toast" role="status"></div>
 <script>
 'use strict';
@@ -302,13 +330,15 @@ let toastT;
 function toast(msg,bad){const t=$('#toast');t.textContent=msg;t.className='toast'+(bad?' bad':'');t.style.display='block';clearTimeout(toastT);toastT=setTimeout(()=>t.style.display='none',bad?6000:2600)}
 
 /* ============ polices ============ */
-const SYS_FONTS=['Arial','Verdana','Tahoma','Trebuchet MS','Georgia','Times New Roman','Courier New','Impact','Comic Sans MS'];
+const SYS_FONTS=['Inter','Arial','Verdana','Tahoma','Trebuchet MS','Georgia','Times New Roman','Courier New','Impact','Comic Sans MS'];
 const GOOGLE_FONTS=[['Roboto','400;700'],['Roboto Condensed','400;700'],['Roboto Mono','400;700'],['Open Sans','400;700'],['Lato','400;700'],['Montserrat','400;700'],['Poppins','400;700'],['Inter','400;700'],['DM Sans','400;700'],['Nunito','400;700'],['Raleway','400;700'],['Oswald','400;700'],['Barlow Condensed','400;700'],['Fira Sans Condensed','400;700'],['Bebas Neue',''],['Anton',''],['Archivo Black',''],['Playfair Display','400;700'],['Merriweather','400;700'],['Lora','400;700'],['Source Code Pro','400;700'],['Space Mono','400;700'],['Pacifico',''],['Caveat','400;700'],['Permanent Marker',''],['Dancing Script','400;700']];
 const FONT_NAMES=[...SYS_FONTS,...GOOGLE_FONTS.map(g=>g[0])];
-for(const [n,w] of GOOGLE_FONTS){
-  const l=document.createElement('link');l.rel='stylesheet';
-  l.href='https://fonts.googleapis.com/css2?family='+n.replace(/ /g,'+')+(w?':wght@'+w:'')+'&display=swap';
-  document.head.appendChild(l);
+function requestFont(name){
+  if(['Inter','Montserrat','Roboto'].includes(name))return;
+  const font=GOOGLE_FONTS.find(item=>item[0]===name);if(!font)return;
+  if(document.querySelector('link[data-font="'+name+'"]'))return;
+  const link=document.createElement('link');link.rel='stylesheet';link.dataset.font=name;
+  link.href='https://fonts.googleapis.com/css2?family='+name.replace(/ /g,'+')+(font[1]?':wght@'+font[1]:'')+'&display=swap';document.head.append(link);
 }
 function fontStack(n){
   let g='sans-serif';
@@ -319,6 +349,7 @@ function fontStack(n){
 }
 const fontReq=new Set();
 function ensureFont(el){
+  requestFont(el.font);
   const key=`${el.font}|${el.bold?1:0}|${el.italic?1:0}`;
   if(fontReq.has(key))return Promise.resolve();
   fontReq.add(key);
@@ -333,7 +364,7 @@ const S={
   els:[],sel:null,nextId:1,
   vars:{},csv:'',useCsv:false,rowIdx:0,copies:1,
   zoom:8,auto:true,
-  prefs:{mode:'local',lang:'tspl',nativeTspl:true,fitEls:true,density:8,speed:4,direction:1,threshold:160,dither:false,invert:false,baud:115200,chunk:20,snap:true,bw:false,printerName:''}
+  prefs:{mode:'browser',lang:'tsplimg',nativeTspl:false,fitEls:true,density:8,speed:4,direction:1,threshold:160,dither:false,invert:false,baud:115200,chunk:20,snap:true,bw:false,printerName:''}
 };
 const TYPE_NAME={text:'Texte',barcode:'Code-barres',qr:'QR code',image:'Image',rect:'Rectangle',line:'Ligne'};
 function def(type){
@@ -567,7 +598,7 @@ function drawRulers(){
     c.style.width=(horiz?len:thick)+'px';c.style.height=(horiz?thick:len)+'px';
     c.width=Math.round((horiz?len:thick)*dpr);c.height=Math.round((horiz?thick:len)*dpr);
     const x=c.getContext('2d');x.scale(dpr,dpr);x.strokeStyle=ink;x.fillStyle=ink;x.lineWidth=1;x.font='10px sans-serif';
-    const step=z>=6?1:z>=3?5:10,lab=z>=12?5:10;
+    const step=z>=6?1:z>=3?5:10,lab=z>=12?5:z>=3?10:z>=1.5?20:50;
     for(let mmv=0;mmv<=(horiz?S.label.w:S.label.h);mmv+=step){
       const p=mmv*z+.5,big=mmv%10===0,mid=mmv%5===0,l=big?10:mid?7:4;
       x.beginPath();
@@ -583,9 +614,9 @@ function drawRulers(){
 function fitZoom(){
   const vp=$('#viewport'),W=S.label.w,H=S.label.h;
   const z=Math.min((vp.clientWidth-80)/W,(vp.clientHeight-90)/H);
-  S.zoom=clamp(z,2,20);
+  S.zoom=clamp(z,0.5,20);
 }
-function setZoom(z,manual){S.zoom=clamp(z,2,24);if(manual)S.auto=false;applyZoom();updateSel()}
+function setZoom(z,manual){S.zoom=clamp(z,0.5,24);if(manual)S.auto=false;applyZoom();updateSel()}
 function hitBox(el){
   const b=el._b||{x:el.x,y:el.y,w:el.w,h:el.h},m=2.5;
   const w=Math.max(b.w,m),hh=Math.max(b.h,m);
@@ -624,10 +655,11 @@ function save(){
 function savePrefs(){try{localStorage.setItem('etiq.prefs',JSON.stringify(S.prefs))}catch(e){}}
 function loadAll(){
   try{const p=JSON.parse(localStorage.getItem('etiq.prefs')||'null');if(p)Object.assign(S.prefs,p)}catch(e){}
-  if(['usb','serial','ble'].includes(S.prefs.mode)){S.prefs.mode='local';try{localStorage.setItem('etiq.prefs',JSON.stringify(S.prefs))}catch(e){}}
-  // Force bons réglages par défaut pour éviter l'impression en mode bitmap
-  if(!S.prefs.lang) S.prefs.lang='tspl';
-  if(S.prefs.lang==='tspl') S.prefs.nativeTspl = true;
+  if(!S.prefs.lang) S.prefs.lang='tsplimg';
+  try { if (!localStorage.getItem('printme.v2')) {
+    S.prefs.lang='tsplimg'; S.prefs.nativeTspl=false;
+    localStorage.setItem('printme.v2','1');
+  }}catch(e){}
   try{localStorage.setItem('etiq.prefs',JSON.stringify(S.prefs))}catch(e){}
   try{
     const d=JSON.parse(localStorage.getItem('etiq.design')||'null');
@@ -829,7 +861,7 @@ function buildProps(){
   const rot=()=>fSeg(el,'Rotation','rot',[[0,'0°'],[90,'90°'],[180,'180°'],[270,'270°']],()=>{syncProps();updateSel()});
   if(el.type==='text'){
     box.append(fText(el,'Contenu','text',true));
-    box.append(fSel(el,'Police','font',FONT_NAMES.map(n=>[n,n])));
+    box.append(fSel(el,'Police','font',FONT_NAMES.map(n=>[n,n+(!SYS_FONTS.includes(n)&&!['Montserrat','Roboto'].includes(n)?' (Internet)':'')])));
     box.append(fNum(el,'Taille','pt',{min:4,max:200,step:0.5,unit:'pt'}));
     box.append(fSeg(el,'Style','bold',[[false,'Normal'],[true,'Gras']]));
     box.append(fChk(el,'Italique','italic'));
@@ -966,8 +998,8 @@ function buildTSPLNative(row,copies){
   const L=S.label,P=S.prefs,dpmm=L.dpi/25.4;
   const D=v=>Math.round(v*dpmm);
   const gapLine=L.paper==='auto'?'':(L.paper==='gap'?`GAP ${L.gap} mm,0 mm\r\n`:L.paper==='mark'?`BLINE ${L.gap} mm,0 mm\r\n`:'GAP 0 mm,0 mm\r\n');
-  const esc=s=>String(s||'').replace(/[\r\n]+/g,' ').replace(/"/g,'').trim();
-  let out=`SIZE ${L.w} mm,${L.h} mm\r\n${gapLine}DIRECTION ${P.direction}\r\nREFERENCE 0,0\r\nDENSITY ${P.density}\r\nSPEED ${P.speed}\r\nCLS\r\n`;
+  const esc=s=>String(s||'').replace(/[\x00-\x1f\x7f]/g,' ').replace(/"/g,'').trim();
+  let out=`SIZE ${L.w} mm,${L.h} mm\r\n${gapLine}DIRECTION ${P.direction}\r\nREFERENCE 0,0\r\nDENSITY ${P.density}\r\nSPEED ${P.speed}\r\nCODEPAGE 1252\r\nCLS\r\n`;
   /* polices bitmap TSPL : [numéro, largeur, hauteur] en points (203 dpi ≈ 8 pts/mm) */
   const FONTS=[['1',8,12],['2',12,20],['3',16,24],['4',24,32],['5',32,48]];
   const pickFont=(lines,pt,maxDots)=>{
@@ -1012,7 +1044,7 @@ function buildTSPLNative(row,copies){
       let x=left+10*mpx,bar=true;
       for(const c of pat){
         const w=+c*mpx;
-        if(bar)out+=`LINE ${x},${y},${x+w-1},${y},${bh}\r\n`;
+        if(bar)out+=`BAR ${x},${y},${w},${bh}\r\n`;
         x+=w;bar=!bar;
       }
       if(el.show){
@@ -1026,13 +1058,13 @@ function buildTSPLNative(row,copies){
       const CAP=[14,26,42,62,84,106,122,152,180,213,251,287,331,362,412,450,504,560,624,666,711,771,857,911,997];
       let vi=CAP.findIndex(c=>data.length<=c);if(vi<0)vi=CAP.length-1;
       const mod=clamp(Math.round(D(el.w||el.h)/(17+4*(vi+1))),2,16);
-      out+=`QRCODE ${D(el.x)},${D(el.y)},${el.ecc||'M'},${mod},M,S,"${esc(data)}"\r\n`;
+      out+=`QRCODE ${D(el.x)},${D(el.y)},${el.ecc||'M'},${mod},A,0,"${esc(data)}"\r\n`;
     }else if(el.type==='line'){
       const x=D(el.x),y=D(el.y);
-      out+=`LINE ${x},${y},${x+D(el.w)},${y},${Math.max(1,D(el.h||0.4))}\r\n`;
+      out+=`BAR ${x},${y},${D(el.w)},${Math.max(1,D(el.h||0.4))}\r\n`;
     }else if(el.type==='rect'){
       const x=D(el.x),y=D(el.y);
-      out+=`RECTANGLE ${x},${y},${x+D(el.w)},${y+D(el.h)},${Math.max(1,D(el.thick||0.4))}\r\n`;
+      out+=el.fill?`BAR ${x},${y},${D(el.w)},${D(el.h)}\r\n`:`BOX ${x},${y},${x+D(el.w)},${y+D(el.h)},${Math.max(1,D(el.thick||0.4))}\r\n`;
     }
   }
   out+=`PRINT ${copies},1\r\n`;
@@ -1040,7 +1072,7 @@ function buildTSPLNative(row,copies){
 }
 function encL1(str){
   const out=new Uint8Array(str.length);
-  for(let i=0;i<str.length;i++){out[i]=str.charCodeAt(i)&0xFF}
+  for(let i=0;i<str.length;i++){const code=str.charCodeAt(i);const map={'€':128,'’':146,'‘':145,'“':147,'”':148,'–':150,'—':151,'œ':156,'Œ':140};out[i]=code<=255?code:(map[str[i]]||63)}
   return out;
 }
 function buildESCPOS(m,copies){
@@ -1054,57 +1086,18 @@ function buildESCPOS(m,copies){
 async function jobBytes(i){
   const lang=S.prefs.lang;
   if(lang==='tspl'&&S.prefs.nativeTspl)return buildTSPLNative(rowFor(i),S.copies);
-  if(lang==='zpl')return buildZPL(rowFor(i),S.copies);
+
   const c=document.createElement('canvas');
   render(c,rowFor(i),{preview:false});
   const m=toMono(c);
   if(lang==='escpos')return buildESCPOS(m,S.copies);
+  if(lang==='zpl')return buildZPLRaster(m,S.copies);
   return buildTSPL(m,S.copies); /* tsplimg : même langage, rendu en image bitmap */
 }
-/* ZPL (Zebra) — syntaxe vérifiée sur le guide ZPL II officiel Zebra */
-function buildZPL(row,copies){
-  const L=S.label,P=S.prefs,dpmm=L.dpi/25.4;
-  const D=v=>Math.round(v*dpmm);
-  const z=s=>String(s||'').replace(/[\r\n]+/g,' ').replace(/[\^~]/g,'').trim();
-  const CAP=[14,26,42,62,84,106,122,152,180,213,251,287,331,362,412,450,504,560,624,666,711,771,857,911,997];
-  let out=`^XA\n^PW${D(L.w)}\n^LL${D(L.h)}\n^LH0,0\n^CI28\n^MD${clamp(P.density*2,0,30)}\n^PR${clamp(P.speed,1,8)}\n`;
-  if(P.direction===0)out+='^POI\n';
-  if(L.paper==='gap'||L.paper==='mark')out+='^MMT\n';
-  for(const el of S.els){
-    const x=D(el.x),y=D(el.y);
-    if(el.type==='text'){
-      const lay=layoutText(el,row,dpmm,false);
-      const src=lay.lines.filter(l=>l!=='');
-      if(!src.length)continue;
-      const h=Math.max(8,Math.round(el.pt*25.4/72*dpmm));
-      const al=el.align==='center'?'C':el.align==='right'?'R':'L';
-      const body=src.map(z).join('\\&');
-      const fld=`^A0N,${h},0\n^FB${D(el.w)},${src.length},0,${al},0\n^FD${body}^FS\n`;
-      out+=`^FO${x},${y}${el.inv?'^FR':''}\n${fld}`;
-      if(el.bold)out+=`^FO${x+1},${y}${el.inv?'^FR':''}\n${fld}`; /* faux-gras : 2e passe décalée de 1 point */
-    }else if(el.type==='barcode'){
-      const data=resolve(el.text,row,false);
-      if(!data)continue;
-      out+=`^FO${x},${y}\n^BCN,${Math.max(24,D(el.h))},${el.show?'Y':'N'},N,N,A\n^FD${z(data)}^FS\n`;
-    }else if(el.type==='qr'){
-      const data=resolve(el.text,row,false);
-      if(!data)continue;
-      let vi=CAP.findIndex(c=>data.length<=c);if(vi<0)vi=CAP.length-1;
-      const modules=17+4*(vi+1);
-      const avail=Math.min(D(el.w||el.h),D(el.h||el.w))||24;
-      const mag=clamp(Math.floor(avail/modules)||1,1,10);
-      out+=`^FO${x},${y}\n^BQN,2,${mag}\n^FD${el.ecc||'M'}A,${z(data)}^FS\n`;
-    }else if(el.type==='line'){
-      const t=Math.max(1,D(el.h||0.4));
-      out+=`^FO${x},${y}\n^GB${Math.max(1,D(el.w))},0,${t},B,0\n`;
-    }else if(el.type==='rect'){
-      const w=Math.max(1,D(el.w)),h=Math.max(1,D(el.h));
-      const t=el.fill?Math.min(w,h):Math.max(1,D(el.thick||0.4));
-      out+=`^FO${x},${y}\n^GB${w},${h},${t},B,0\n`;
-    } /* images non supportées en ZPL */
-  }
-  out+=`^PQ${Math.max(1,copies)},0,1,Y\n^XZ\n`;
-  return ENC.encode(out);
+/* ZPL raster : tous les éléments passent par le même aperçu. */
+function buildZPLRaster(m,copies){
+  const data=Array.from(m.bits,b=>(S.prefs.invert?(~b)&255:b).toString(16).padStart(2,'0')).join('').toUpperCase();
+  return ENC.encode(`^XA^PW${m.w}^LL${m.h}^LH0,0${S.prefs.direction===0?'^POI':''}^FO0,0^GFA,${m.bits.length},${m.bits.length},${m.wb},${data}^FS^PQ${copies},0,1,Y^XZ`);
 }
 /* Étiquette de test dans le langage sélectionné : même chemin de code que l'impression réelle */
 async function testBytes(){
@@ -1119,17 +1112,21 @@ async function testBytes(){
     mk('barcode',{x:m,y:L.h*0.45,w:w,h:Math.max(10,L.h*0.2),text:'TEST-123456',show:true}),
     mk('qr',{x:(L.w-Math.min(L.w,L.h)*0.2)/2,y:L.h*0.72,w:Math.min(L.w,L.h)*0.2,h:Math.min(L.w,L.h)*0.2,text:'TEST'})
   ];
-  try{return await jobBytes(0)}
+  try{await allAssets();return await jobBytes(0)}
   finally{S.els=keepEls;S.vars=keepVars;S.copies=keepCopies}
+}
+async function allAssets(){
+  await allFonts();
+  await Promise.all(S.els.filter(e=>e.type==='image'&&e.src).map(async e=>{const im=getImg(e.src);await im.decode()}));
 }
 async function allFonts(){await Promise.all(S.els.filter(e=>e.type==='text').map(ensureFont));if(document.fonts&&document.fonts.ready)await document.fonts.ready}
 
-const conn={mode:null,name:'',usb:null,port:null,writer:null,char:null,dev:null};
+const conn={mode:null,name:'',usb:null,port:null,writer:null,char:null,dev:null,nativeUsb:false,nativeBt:false};
 const BLE_SERVICES=[0xffe0,0xff00,0x18f0,0xfee7,0xfff0,0xffb0,0xae30,0xffe5,'49535343-fe7d-4ae5-8fa9-9fafd205e455','e7810a71-73ae-499d-8c15-faa9aef0c3f2'];
 function isConnected(){
   const m=S.prefs.mode;
   if(m==='browser')return true;
-  return conn.mode===m&&!!(m==='usb'?conn.usb:m==='serial'?conn.writer:m==='local'?conn.name:conn.char&&conn.dev&&conn.dev.gatt.connected);
+  return conn.mode===m&&!!(m==='androidbt'?conn.nativeBt:m==='androidusb'?conn.nativeUsb:m==='usb'?conn.usb:m==='serial'?conn.writer:m==='local'?conn.name:conn.char&&conn.dev&&conn.dev.gatt.connected);
 }
 function updateConn(){
   const m=S.prefs.mode,ok=m!=='browser'&&isConnected();
@@ -1141,24 +1138,27 @@ function updateConn(){
   $('#btnConnect').textContent=ok?'Reconnecter':'Connecter';
   const hints={
     browser:'Utilise le pilote de l\'imprimante installé sur l\'appareil. Dans la fenêtre d\'impression, vérifiez que le format du papier correspond à l\'étiquette et que les marges sont à zéro.',
-    local:'Envoi direct via le helper local (printme_helper.py) vers la file Windows — aucune fenêtre d\'impression. Lancez d\'abord : python printme_helper.py',
-    usb:'Envoi direct par câble USB (Chrome ou Edge). Sous Windows, le pilote WinUSB est nécessaire (outil Zadig) ; sur Android, un câble OTG suffit.',
+    local:window.printmeDesktop?.platform==='win32'?'Envoi direct à la file Windows. Aucun logiciel supplémentaire à lancer.':'Envoi direct via le helper local (printme_helper.py) vers la file Windows — aucune fenêtre d\'impression. Lancez d\'abord : python printme_helper.py',
+    androidbt:'Connexion native Android à une imprimante déjà appairée. Autorisez « Appareils à proximité » lorsque le téléphone le demande.',
+    androidusb:'Branchez votre imprimante avec un câble USB OTG. Autorisez l’accès USB puis choisissez le langage annoncé par son auto-test. La TS-M420 doit être testée sur votre matériel.',
+    usb:'Envoi direct par câble USB (Chrome ou Edge). Sous Windows, le pilote WinUSB est nécessaire (outil Zadig) ; sur Android, la compatibilité OTG et les autorisations USB doivent être vérifiées.',
     serial:'Port série, ou Bluetooth appairé comme port COM (Chrome ou Edge sur ordinateur).',
-    ble:'Bluetooth basse consommation (Chrome sur Android et ordinateur). Les imprimantes en Bluetooth classique n\'apparaissent pas ici : utilisez le câble USB.'};
+    ble:'Bluetooth basse consommation (Chrome sur Android et ordinateur). La compatibilité dépend du service BLE et du protocole de l’imprimante. Bluetooth classique non pris en charge par ce mode.'};
   $('#modeHint').textContent=hints[m];
+  $('#androidUsbRow').hidden=m!=='androidusb';
+  $('#androidBtRow').hidden=m!=='androidbt';
 }
 /* --- acces au helper d'impression local (file Windows) --- */
 const HELPER='http://127.0.0.1:8765';
 async function helperFetch(chemin,opts){
-  const r=await fetch(HELPER+chemin,opts);
+  if(window.printmeDesktop?.platform==='win32')return window.printmeDesktop.helper(chemin,opts);
+  const r=await fetch(HELPER+chemin,{...opts,signal:AbortSignal.timeout(15000)});
+  if(!r.ok){const err=await r.json().catch(()=>({}));throw new Error(err.error||'Assistant indisponible ('+r.status+')')}
   const j=await r.json();
   if(j&&j.error)throw new Error(j.error);
   return j;
 }
-/* Le helper transmet aussi le pilote de chaque file. Le pilote
-   « Generic / Text Only » remplace les codes de commande par des
-   caractères : une étiquette TSPL y sort en clair (TEXT 32,128,...).
-   On connaît donc le pilote pour écarter ces files. */
+/* Informations de la file Windows : diagnostic sans déduire le protocole. */
 let PRINTER_INFO=[];
 const helperPrinters=async()=>{
   const j=await helperFetch('/printers');
@@ -1166,16 +1166,14 @@ const helperPrinters=async()=>{
   return j.printers||[];
 };
 const driverOf=n=>{const d=PRINTER_INFO.find(x=>x.name===n);return (d&&d.driver)||''};
-const isTextOnly=n=>{const d=PRINTER_INFO.find(x=>x.name===n);return !!(d&&d.textOnly)};
 function fillPrinterSel(list){
   const s=$('#printerSel');if(!s)return;
   const cur=S.prefs.printerName||conn.name;
   s.innerHTML='';
-  /* les files qui détruisent les commandes passent en fin de liste */
-  const ordonnees=[...list].sort((a,b)=>(isTextOnly(a)?1:0)-(isTextOnly(b)?1:0));
+  const ordonnees=[...list];
   for(const n of ordonnees){
     const drv=driverOf(n);
-    s.append(h('option',{value:n},n+(drv?'  ('+drv+')':'')+(isTextOnly(n)?'  ⛔ texte':'')));
+    s.append(h('option',{value:n},n+(drv?'  ('+drv+')':'')));
   }
   if(cur&&list.includes(cur))s.value=cur;
 }
@@ -1202,6 +1200,7 @@ async function checkJobs(silent){
 }
 async function unblockQueue(){
   if(!conn.name){toast('Connectez d\'abord l\'imprimante',true);return}
+  if(!confirm('Annuler tous les travaux de « '+conn.name+' » et reprendre cette file ?'))return;
   const b=$('#btnUnblock');b.disabled=true;b.textContent='Déblocage…';
   try{
     const r=await helperFetch('/unblock',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -1215,28 +1214,53 @@ async function unblockQueue(){
   }catch(e){toast('Déblocage impossible : '+(e.message||e),true)}
   finally{b.disabled=false;b.textContent='Débloquer la file'}
 }
+async function refreshBluetooth(){
+  const select=$('#androidBtSel'),current=select.value||S.prefs.bluetoothAddress||'';
+  const devices=(await window.printmeNative.bluetooth.list()).devices||[];
+  select.replaceChildren(h('option',{value:''},devices.length?'Sélectionner une imprimante…':'Aucun appareil appairé — ouvrez les réglages Android'));
+  devices.sort((a,b)=>String(a.name).localeCompare(String(b.name))).forEach(device=>select.append(h('option',{value:device.id,disabled:device.classic===false},device.name+' · '+device.id.slice(-5)+(device.classic===false?' (BLE uniquement)':''))));
+  if(devices.some(device=>device.id===current&&device.classic!==false))select.value=current;
+  return devices;
+}
+let connConnecting=false,connectionEpoch=0;
 async function connect(){
+  if(connConnecting)return;
+  connConnecting=true;$('#btnConnect').disabled=true;
   const m=S.prefs.mode;
   try{
+    if(m==='browser')return;
     if(m==='local'){
       const list=await helperPrinters();
       if(!list.length)throw new Error('Aucune imprimante trouvée. Vérifiez qu\'une imprimante est installée dans Windows.');
       conn.localPrinters=list;
-      /* On écarte les files « Generic / Text Only » : elles transforment
-         les commandes en texte au lieu de les exécuter. */
-      const saines=list.filter(n=>!isTextOnly(n));
-      const candidates=saines.length?saines:list;
+      const candidates=list;
       const pick=(S.prefs.printerName&&candidates.includes(S.prefs.printerName))?S.prefs.printerName
         :candidates.find(n=>n.toUpperCase().includes('PRINT ME'))||candidates.find(n=>/LABEL|M420|TSPL/i.test(n))||candidates[0];
       conn.mode='local';conn.name=pick;S.prefs.printerName=pick;savePrefs();
       fillPrinterSel(list);          /* après le choix : le menu montre la vraie file */
       updateConn();
-      if(isTextOnly(pick))toast('Attention : la file « '+pick+' » utilise le pilote « Generic / Text Only », qui imprime les commandes en clair. Créez une file avec le pilote de l\'imprimante.',true);
-      else toast('Imprimante directe : '+pick);
+      toast('Imprimante directe : '+pick);
       checkJobs(true);
       return;
     }
-    if(m==='usb'){
+    await disconnect();
+    const attempt=connectionEpoch;
+    if(m==='androidbt'){
+      const select=$('#androidBtSel');
+      if(!select.value){await refreshBluetooth();if(!select.value){toast('Choisissez votre imprimante dans la liste, puis cliquez sur Connecter.',true);return}}
+      const result=await window.printmeNative.bluetooth.connect({id:select.value});
+      if(attempt!==connectionEpoch||S.prefs.mode!==m){await window.printmeNative.bluetooth.disconnect();return}
+      conn.nativeBt=true;conn.name=result.name||select.selectedOptions[0].text;S.prefs.bluetoothAddress=select.value;savePrefs();
+    }else if(m==='androidusb'){
+      const devices=(await window.printmeNative.usb.list()).devices;
+      const select=$('#androidUsbSel'),current=select.value;
+      select.replaceChildren(h('option',{value:''},'Choisir un appareil USB…'));
+      devices.forEach(device=>select.append(h('option',{value:device.id},device.name)));
+      if(!devices.length)throw new Error('Aucun appareil USB détecté. Vérifiez le câble OTG.');
+      select.value=devices.some(d=>d.id===current)?current:devices.length===1?devices[0].id:'';
+      if(!select.value)throw new Error('Choisissez votre imprimante USB, puis cliquez à nouveau sur Connecter.');
+      const result=await window.printmeNative.usb.connect({id:select.value});conn.nativeUsb=true;conn.name=result.name;
+    }else if(m==='usb'){
       const d=await navigator.usb.requestDevice({filters:[]});
       await d.open();if(d.configuration===null)await d.selectConfiguration(1);
       let pick=null;
@@ -1270,24 +1294,25 @@ async function connect(){
     let msg=e.message||String(e);
     if(m==='usb'&&/denied|access/i.test(msg))msg='Windows occupe l\'imprimante : le mode USB direct ne peut pas la prendre. Choisissez « Direct (imprimante Windows) » dans Envoi.';
     toast('Connexion impossible : '+msg,true);
-  }
+  }finally{connConnecting=false;$('#btnConnect').disabled=false;updateConn()}
 }
 async function writeBytes(bytes){
   const m=S.prefs.mode;
   if(m==='local'){
     let bin='';for(let i=0;i<bytes.length;i+=8192)bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+8192));
-    const r=await fetch('http://127.0.0.1:8765/print',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({printer:conn.name,data:btoa(bin)})});
-    const j=await r.json();
+    const j=await helperFetch('/print',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({printer:conn.name,data:btoa(bin)})});
     if(j.error)throw new Error(j.error);
     return;
   }
-  if(m==='usb'){for(let i=0;i<bytes.length;i+=4096)await conn.usb.d.transferOut(conn.usb.ep,bytes.slice(i,i+4096))}
+  if(m==='androidbt'){let bin='';for(let i=0;i<bytes.length;i+=8192)bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+8192));await window.printmeNative.bluetooth.write({data:btoa(bin)})}
+  else if(m==='androidusb'){let bin='';for(let i=0;i<bytes.length;i+=8192)bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+8192));await window.printmeNative.usb.write({data:btoa(bin)})}
+  else if(m==='usb'){for(let i=0;i<bytes.length;i+=4096){const chunk=bytes.slice(i,i+4096);const r=await conn.usb.d.transferOut(conn.usb.ep,chunk);if(r.status!=='ok'||r.bytesWritten!==chunk.length)throw new Error('Envoi USB incomplet : vérifiez le câble.')}}
   else if(m==='serial'){for(let i=0;i<bytes.length;i+=512)await conn.writer.write(bytes.slice(i,i+512))}
   else if(m==='ble'){
     const n=+S.prefs.chunk,c=conn.char;
     for(let i=0;i<bytes.length;i+=n){
       const part=bytes.slice(i,i+n);
-      if(c.properties.writeWithoutResponse){await c.writeValueWithoutResponse(part);await sleep(6)}else await c.writeValue(part);
+      if(c.properties.writeWithoutResponse){await c.writeValueWithoutResponse(part);await sleep(6)}else await c.writeValueWithResponse(part);
     }
   }
 }
@@ -1297,12 +1322,15 @@ async function printBrowser(){
     const c=document.createElement('canvas');render(c,rowFor(i),{preview:false});
     const url=c.toDataURL('image/png');for(let k=0;k<S.copies;k++)imgs.push(url);
   }
+  const html=`<!doctype html><html><head><meta charset="utf-8"><style>@page{size:${w}mm ${hh}mm;margin:0}html,body{margin:0;padding:0}img{display:block;width:${w}mm;height:${hh}mm;break-after:page}img:last-child{break-after:auto}</style></head><body>${imgs.map(u=>`<img src="${u}">`).join('')}</body></html>`;
+  if(window.printmeNative){await window.printmeNative.print(html);return}
+  if(window.printmeDesktop){await window.printmeDesktop.print(html,w,hh);return}
   const f=document.createElement('iframe');
   f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0';
   document.body.appendChild(f);
   const doc=f.contentDocument;
   doc.open();
-  doc.write(`<!doctype html><html><head><meta charset="utf-8"><style>@page{size:${w}mm ${hh}mm;margin:0}html,body{margin:0;padding:0}img{display:block;width:${w}mm;height:${hh}mm;image-rendering:pixelated;page-break-after:always;break-after:page}img:last-child{page-break-after:auto;break-after:auto}</style></head><body>${imgs.map(u=>`<img src="${u}">`).join('')}</body></html>`);
+  doc.write(html);
   doc.close();
   await new Promise(r=>{const t=setTimeout(r,1500);f.onload=()=>{clearTimeout(t);setTimeout(r,150)}});
   f.contentWindow.focus();f.contentWindow.print();
@@ -1314,21 +1342,13 @@ async function doPrint(){
   if(!S.els.length){toast('L\'étiquette est vide.',true);return}
   const btn=$('#btnPrint');printing=true;btn.disabled=true;
   try{
-    // Avertissement si mode bitmap (peut produire du texte brouillé)
-    if(S.prefs.lang!=='tspl' || !S.prefs.nativeTspl){
-      if(!confirm('Vous êtes en mode image/bitmap (non natif TSPL). Sur certaines imprimantes cela produit du texte brouillé. Voulez-vous continuer ?')){
-        printing=false; btn.disabled=false; btn.textContent='Imprimer';
-        return;
-      }
+    if(S.prefs.mode!=='browser'&&S.prefs.lang==='tspl'&&S.prefs.nativeTspl){
+      if(!confirm('Le mode natif simplifie les polices, alignements et rotations et ignore les images. Pour conserver votre dessin, choisissez « TSPL — aperçu fidèle ». Continuer en mode simplifié ?'))return;
     }
-    await allFonts();
+    await allAssets();
     if(S.prefs.mode==='browser'){await printBrowser();}
     else{
       if(!isConnected()){await connect();if(!isConnected())return}
-      if(isTextOnly(conn.name)){
-        toast('File « '+conn.name+' » refusée : son pilote « Generic / Text Only » imprime les commandes en clair — c\'est exactement ce qui faisait sortir du texte illisible. Choisissez une autre file, ou installez le pilote constructeur.',true);
-        return;
-      }
       const n=rowCount();
       for(let i=0;i<n;i++){
         btn.textContent=n>1?`Envoi ${i+1}/${n}…`:'Envoi…';
@@ -1342,32 +1362,97 @@ async function doPrint(){
       const restants=await checkJobs(true);
       if(restants.length)toast('Étiquette envoyée, mais '+restants.length+' travail(s) sont encore dans la file. Si rien ne sort : bouton « Imprimante » puis « Débloquer la file ».',true);
     }
-  }catch(e){toast('Échec de l\'impression : '+(e.message||e),true)}
+  }catch(e){if(conn.nativeBt){conn.nativeBt=false;updateConn()}if(conn.nativeUsb){conn.nativeUsb=false;updateConn()}toast('Échec de l\'impression : '+(e.message||e),true)}
   finally{printing=false;btn.disabled=false;btn.textContent='Imprimer'}
 }
-function download(name,blob){const a=h('a',{href:URL.createObjectURL(blob),download:name});document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+async function download(name,blob){
+  try{if(window.printmeNative){await window.printmeNative.save(name,blob);return}
+  if(window.printmeDesktop){await window.printmeDesktop.save(name,new Uint8Array(await blob.arrayBuffer()));return}}catch(e){toast('Export impossible : '+e.message,true);return}
+const a=h('a',{href:URL.createObjectURL(blob),download:name});document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+
+async function disconnect(){
+  connectionEpoch++;
+  try{if(conn.nativeBt||(connConnecting&&S.prefs.mode==='androidbt')){conn.nativeBt=false;await window.printmeNative.bluetooth.disconnect()}if(conn.nativeUsb)await window.printmeNative.usb.disconnect();if(conn.writer){await conn.writer.close();conn.writer.releaseLock()}if(conn.port)await conn.port.close();if(conn.usb)await conn.usb.d.close();if(conn.dev?.gatt?.connected)conn.dev.gatt.disconnect()}catch(e){console.warn(e)}
+  Object.assign(conn,{mode:null,name:'',usb:null,port:null,writer:null,char:null,dev:null,nativeUsb:false,nativeBt:false});
+}
+function profileName(initial,title='Enregistrer un profil',label='Nom du profil'){return new Promise(resolve=>{const dialog=$('#nameDialog');$('#nameDialog h2').textContent=title;$('#nameDialog label span').textContent=label;$('#profileName').value=initial;dialog.returnValue='cancel';dialog.addEventListener('close',()=>resolve(dialog.returnValue==='save'?$('#profileName').value:null),{once:true});dialog.showModal()})}
+function showHome(){
+  const gallery=$('#templateGallery');gallery.replaceChildren();
+  const old={label:S.label,els:S.els,vars:S.vars};
+  try{for(const [key,t] of Object.entries(TEMPLATES)){
+    const preview=document.createElement('canvas');S.label={...old.label,w:t.w,h:t.h};S.els=t.els;S.vars={...t.vars};render(preview,{...t.vars},{preview:false});
+    const button=h('button',{class:'template-card',onclick:()=>{$('#home').close();applyTemplate(key);setTab('data')}},h('div',{class:'template-preview'},preview),h('strong',{},t.name),h('small',{},t.w+' × '+t.h+' mm'));gallery.append(button);
+  }}finally{Object.assign(S,old)}
+  const saved=$('#homeSaved');saved.replaceChildren();const items=savedTpl();
+  if(!Object.keys(items).length)saved.append(h('p',{class:'hint'},'Vos modèles enregistrés apparaîtront ici.'));
+  for(const [name,t] of Object.entries(items))saved.append(h('button',{class:'btn',onclick:()=>{$('#home').close();S.label={...t.label};S.els=t.els.map(e=>({...e,id:S.nextId++}));S.vars={...t.vars};S.sel=null;afterStructure();snapshot()}},name));
+  $('#home').showModal();
+}
+function setupStudio(){
+  $('#btSettings').onclick=async()=>{try{await window.printmeNative.bluetooth.openSettings()}catch(e){toast(e.message,true)}};
+  $('#btRefresh').onclick=async()=>{const button=$('#btRefresh');button.disabled=true;try{await refreshBluetooth();toast('Liste des appareils appairés actualisée')}catch(e){toast(e.message,true)}finally{button.disabled=false}};
+  $('#btDisconnect').onclick=async()=>{await disconnect();updateConn();toast('Imprimante déconnectée')};
+  $('#androidBtSel').onchange=async()=>{if(conn.nativeBt)await disconnect();S.prefs.bluetoothAddress=$('#androidBtSel').value;savePrefs();updateConn()};
+  if(window.printmeNative?.bluetooth?.addListener)window.printmeNative.bluetooth.addListener('disconnected',()=>{if(conn.mode==='androidbt'){conn.nativeBt=false;updateConn()}});
+
+  $('#tsm420Preset').onclick=()=>{S.label.dpi=203;S.prefs.lang='tsplimg';S.prefs.nativeTspl=false;S.prefs.density=8;S.prefs.speed=4;S.prefs.invert=false;S.copies=1;$('#copies').value=1;bindPrefsValues();syncLabelUI();savePrefs();save();draw();toast('Profil TSPL 203 dpi appliqué — vérifiez le format du rouleau')};
+  $('#btnHome').onclick=showHome;
+  $('#homeClose').onclick=()=>$('#home').close();
+  $('#homePrinter').onclick=()=>{$('#home').close();$('#btnPrinter').click()};
+  $('#newLabel').onclick=()=>{$('#home').close();S.els=[];S.label={...S.label,w:60,h:40};S.sel=null;S.vars={};S.auto=true;afterStructure();snapshot();setTab('add')};
+  $('#installDriver').hidden=window.printmeDesktop?.platform!=='win32';
+  $('#installDriver').onclick=async()=>{try{await window.printmeDesktop.installDriver()}catch(e){toast('Pilote : '+e.message,true)}};
+
+  let profiles;try{profiles=JSON.parse(localStorage.getItem('printme.profiles')||'{}')}catch(e){profiles={}}
+  const select=$('#profile');
+  const refresh=()=>{select.replaceChildren(h('option',{value:''},'Réglages actuels'));Object.keys(profiles).forEach(name=>select.append(h('option',{value:name},name)))};
+  refresh();
+  $('#profileSave').onclick=async()=>{const name=await profileName(select.value||'');if(!name?.trim())return;
+    profiles[name.trim()]={prefs:{...S.prefs},label:{...S.label}};try{localStorage.setItem('printme.profiles',JSON.stringify(profiles));refresh();select.value=name.trim();toast('Profil enregistré')}catch(e){toast('Stockage plein : profil non enregistré',true)}};
+  $('#profileDelete').onclick=()=>{if(!select.value)return;delete profiles[select.value];localStorage.setItem('printme.profiles',JSON.stringify(profiles));refresh()};
+  select.onchange=async()=>{const profile=profiles[select.value];if(!profile)return;await disconnect();Object.assign(S.prefs,profile.prefs);Object.assign(S.label,profile.label);bindPrefsValues();syncLabelUI();savePrefs();save();updateConn();draw();toast('Profil chargé')};
+  const platform=window.printmeNative?.platform||window.printmeDesktop?.platform||'web';
+  $('#platformHint').textContent=platform==='ios'?'iPhone / iPad : impression système avec une imprimante compatible AirPrint. TS-M420 : compatibilité directe non confirmée.':platform==='android'?'Android : Bluetooth classique natif pour les appareils appairés, USB OTG ou impression système selon l’imprimante.':'Ordinateur : impression système avec le pilote installé, ou assistant Windows pour les commandes brutes.';
+  let installEvent;
+  addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvent=e;$('#btnInstall').hidden=false});
+  $('#btnInstall').onclick=async()=>{if(installEvent){await installEvent.prompt();installEvent=null;$('#btnInstall').hidden=true}};
+  addEventListener('appinstalled',()=>{$('#btnInstall').hidden=true});
+}
+function bindPrefsValues(){
+  for(const id of ['mode','lang','density','speed','direction','threshold','baud','chunk'])$('#'+id).value=S.prefs[id];
+  for(const id of ['nativeTspl','dither','invert','snap','bw','fitEls'])$('#'+id).checked=!!S.prefs[id];
+  if($('#mode').selectedOptions[0]?.disabled){S.prefs.mode='browser';$('#mode').value='browser'}
+  $('#nativeRow').style.display=S.prefs.lang==='tspl'?'':'none';
+}
 
 /* ============ initialisation ============ */
 function bindPrefs(){
   const map=[['#mode','mode'],['#lang','lang'],['#density','density','n'],['#speed','speed','n'],['#direction','direction','n'],['#threshold','threshold','n'],['#baud','baud','n'],['#chunk','chunk','n']];
   for(const [sel,key,t] of map){
     const e=$(sel);e.value=S.prefs[key];
-    e.addEventListener('change',()=>{S.prefs[key]=t==='n'?+e.value:e.value;savePrefs();if(key==='mode')updateConn();if(key==='threshold'&&S.prefs.bw)draw()});
+    e.addEventListener('change',async()=>{if(key==='mode')await disconnect();S.prefs[key]=t==='n'?+e.value:e.value;savePrefs();if(key==='mode')updateConn();if(key==='threshold'&&S.prefs.bw)draw()});
     if(key==='threshold')e.addEventListener('input',()=>{S.prefs[key]=+e.value;if(S.prefs.bw||S.prefs.dither)requestRender()});
   }
   for(const [sel,key] of [['#dither','dither'],['#invert','invert'],['#snap','snap'],['#bw','bw'],['#nativeTspl','nativeTspl'],['#fitEls','fitEls']]){
     const e=$(sel);e.checked=!!S.prefs[key];
-    e.addEventListener('change',()=>{S.prefs[key]=e.checked;savePrefs();draw()});
+    e.addEventListener('change',async()=>{if(key==='mode')await disconnect();S.prefs[key]=e.checked;savePrefs();draw()});
   }
   const langSync=()=>{$('#nativeRow').style.display=$('#lang').value==='tspl'?'':'none'};
   $('#lang').addEventListener('change',()=>{langSync(); if($('#lang').value==='tspl'){ S.prefs.nativeTspl=true; $('#nativeTspl').checked=true; savePrefs(); }});langSync();
   $('#btnTestLang').onclick=async()=>{
     try{
       if(!isConnected()){await connect();if(!isConnected())return}
+      if(S.prefs.mode==='browser')throw new Error('Le test de langage nécessite un envoi direct. Pour le mode système, imprimez une étiquette normale.');
       await writeBytes(await testBytes());
       toast('Étiquette de test envoyée — langage '+$('#lang').selectedOptions[0].text);
     }catch(e){toast('Échec du test : '+(e.message||e),true)}
   };
+  $('#mode option[value=androidbt]').hidden=!window.printmeNative?.bluetooth;
+  $('#mode option[value=androidbt]').disabled=!window.printmeNative?.bluetooth;
+  $('#mode option[value=androidusb]').hidden=!window.printmeNative?.usb;
+  $('#mode option[value=androidusb]').disabled=!window.printmeNative?.usb;
+  if(window.printmeNative){$('#mode option[value=local]').disabled=true}
+  if(!window.printmeDesktop&&/iPhone|iPad|Android/.test(navigator.userAgent))$('#mode option[value=local]').disabled=true;
   if(!navigator.usb)$('#mode option[value=usb]').disabled=true;
   if(!navigator.serial)$('#mode option[value=serial]').disabled=true;
   if(!navigator.bluetooth)$('#mode option[value=ble]').disabled=true;
@@ -1375,6 +1460,7 @@ function bindPrefs(){
 }
 function init(){
   const had=loadAll();
+  setupStudio();
   if(S.prefs.fitEls==null)S.prefs.fitEls=true;
   bindPrefs();
   const ps=$('#preset');
@@ -1383,7 +1469,7 @@ function init(){
     if(p[1]<0||p[2]<0){o.disabled=true;o.style.fontWeight='700'}   /* rubriques « — DYMO — » non sélectionnables */
     ps.append(o);
   });ps.append(h('option',{value:'custom'},'Personnalisé…'));
-  if(!had)applyTemplate('passservice');
+  if(!had){applyTemplate('produit');setTimeout(showHome,0)}
   else{
     S.els.forEach(e=>{S.nextId=Math.max(S.nextId,(e.id||0)+1)});
     /* dessin hérité du format 40 × 60 posé sur un grand format : on passe au modèle 100 × 150 en conservant les données */
@@ -1432,6 +1518,7 @@ function init(){
   $('#zOut').onclick=()=>setZoom(S.zoom/1.2,true);
   $('#zFit').onclick=()=>{S.auto=true;fitZoom();applyZoom();updateSel()};
   addEventListener('resize',()=>{if(S.auto){fitZoom();applyZoom();updateSel()}});
+  new ResizeObserver(()=>{if(S.auto){fitZoom();applyZoom();updateSel()}}).observe($('#viewport'));
 
   /* données */
   $('#csv').addEventListener('input',e=>{S.csv=e.target.value;renderData();requestRender()});
@@ -1442,7 +1529,7 @@ function init(){
   $('#rNext').onclick=()=>{S.rowIdx=Math.min(csvRows().length-1,S.rowIdx+1);renderData();draw()};
 
   /* modèles */
-  $('#saveTpl').onclick=()=>{const n=(prompt('Nom du modèle :')||'').trim();if(!n)return;const o=savedTpl();o[n]={label:S.label,els:JSON.parse(serialize()).els,vars:S.vars};putTpl(o);renderTemplates();toast('Modèle enregistré')};
+  $('#saveTpl').onclick=async()=>{const n=(await profileName('', 'Enregistrer un modèle', 'Nom du modèle')||'').trim();if(!n)return;const o=savedTpl();o[n]={label:S.label,els:JSON.parse(serialize()).els,vars:S.vars};putTpl(o);renderTemplates();toast('Modèle enregistré')};
   $('#expTpl').onclick=()=>download('etiquette.json',new Blob([JSON.stringify({label:S.label,els:S.els,vars:S.vars},strip,2)],{type:'application/json'}));
   $('#impTpl').onclick=()=>$('#impFile').click();
   $('#impFile').addEventListener('change',e=>{
@@ -1508,7 +1595,7 @@ function init(){
   if(document.fonts)document.fonts.addEventListener('loadingdone',requestRender);
 
   /* application installable (Windows, macOS, Linux, Android) : mise en cache hors-ligne */
-  if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){
+  if(!window.printmeNative&&!window.printmeDesktop&&'serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){
     addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
   }
 }

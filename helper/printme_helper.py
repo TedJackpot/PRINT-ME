@@ -5,6 +5,7 @@ import base64
 import ctypes
 import ctypes.wintypes as wt
 import json
+import os
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
@@ -16,7 +17,7 @@ PORT = 8765
 # la derniere reponse validee au lieu de laisser le client attendre indefiniment.
 _LAST_PRINTERS = []
 
-winspool = ctypes.WinDLL("winspool.drv", use_last_error=True)
+winspool = ctypes.WinDLL("winspool.drv", use_last_error=True) if sys.platform == "win32" else None
 
 
 class PRINTER_INFO_1(ctypes.Structure):
@@ -130,15 +131,8 @@ def _enum_printer_details():
 
 
 def driver_detruit_les_commandes(driver):
-    """Vrai pour les pilotes qui transforment les octets en texte.
-
-    "Generic / Text Only" ne transmet pas les codes de commande : il les
-    remplace par des caracteres. Une etiquette TSPL envoyee a cette file
-    sort en clair ("TEXT 32,128,\"De : Pass\""), ce qui donne l'impression
-    qu'aucun langage ne fonctionne. C'est la cause la plus frequente.
-    """
-    d = (driver or "").lower()
-    return ("text only" in d) or ("generic / text" in d)
+    """Un nom de pilote ne permet pas de conclure à une altération des octets RAW."""
+    return False
 
 
 def list_printer_details(timeout=8.0):
@@ -181,6 +175,7 @@ class JOB_INFO_1(ctypes.Structure):
         ("Position", wt.DWORD),
         ("TotalPages", wt.DWORD),
         ("PagesPrinted", wt.DWORD),
+        ("Submitted", wt.WORD * 8),
     ]
 
 
@@ -188,24 +183,31 @@ class JOB_INFO_1(ctypes.Structure):
 # route (statut "Retained") : le port USB reste alors occupe et plus rien ne
 # sort, sans aucune erreur visible. Ces deux fonctions permettent de le voir
 # et de le debloquer depuis l'application.
-winspool.OpenPrinterW.argtypes = [ctypes.c_wchar_p, ctypes.POINTER(wt.HANDLE), ctypes.c_void_p]
-winspool.OpenPrinterW.restype = wt.BOOL
-winspool.StartDocPrinterW.argtypes = [wt.HANDLE, wt.DWORD, ctypes.c_void_p]
-winspool.StartDocPrinterW.restype = wt.DWORD
-winspool.WritePrinter.argtypes = [wt.HANDLE, ctypes.c_void_p, wt.DWORD, ctypes.POINTER(wt.DWORD)]
-winspool.WritePrinter.restype = wt.BOOL
+if winspool is not None:
+    winspool.OpenPrinterW.argtypes = [ctypes.c_wchar_p, ctypes.POINTER(wt.HANDLE), ctypes.c_void_p]
+    winspool.OpenPrinterW.restype = wt.BOOL
+    winspool.StartDocPrinterW.argtypes = [wt.HANDLE, wt.DWORD, ctypes.c_void_p]
+    winspool.StartDocPrinterW.restype = wt.DWORD
+    winspool.WritePrinter.argtypes = [wt.HANDLE, ctypes.c_void_p, wt.DWORD, ctypes.POINTER(wt.DWORD)]
+    winspool.WritePrinter.restype = wt.BOOL
 
 
-winspool.EnumJobsW.argtypes = [wt.HANDLE, wt.DWORD, wt.DWORD, wt.DWORD,
-                               ctypes.c_void_p, wt.DWORD,
-                               ctypes.POINTER(wt.DWORD), ctypes.POINTER(wt.DWORD)]
-winspool.EnumJobsW.restype = wt.BOOL
-winspool.SetJobW.argtypes = [wt.HANDLE, wt.DWORD, wt.DWORD, ctypes.c_void_p, wt.DWORD]
-winspool.SetJobW.restype = wt.BOOL
-winspool.SetPrinterW.argtypes = [wt.HANDLE, wt.DWORD, ctypes.c_void_p, wt.DWORD]
-winspool.SetPrinterW.restype = wt.BOOL
-winspool.ClosePrinter.argtypes = [wt.HANDLE]
-winspool.ClosePrinter.restype = wt.BOOL
+    winspool.EnumJobsW.argtypes = [wt.HANDLE, wt.DWORD, wt.DWORD, wt.DWORD,
+                                   ctypes.c_void_p, wt.DWORD,
+                                   ctypes.POINTER(wt.DWORD), ctypes.POINTER(wt.DWORD)]
+    winspool.EnumJobsW.restype = wt.BOOL
+    winspool.SetJobW.argtypes = [wt.HANDLE, wt.DWORD, wt.DWORD, ctypes.c_void_p, wt.DWORD]
+    winspool.SetJobW.restype = wt.BOOL
+    winspool.SetPrinterW.argtypes = [wt.HANDLE, wt.DWORD, ctypes.c_void_p, wt.DWORD]
+    winspool.SetPrinterW.restype = wt.BOOL
+    winspool.ClosePrinter.argtypes = [wt.HANDLE]
+    winspool.ClosePrinter.restype = wt.BOOL
+
+    winspool.EnumPrintersW.argtypes = [wt.DWORD, ctypes.c_wchar_p, wt.DWORD, ctypes.c_void_p, wt.DWORD, ctypes.POINTER(wt.DWORD), ctypes.POINTER(wt.DWORD)]
+    winspool.EnumPrintersW.restype = wt.BOOL
+    for _name in ("StartPagePrinter", "EndPagePrinter", "EndDocPrinter", "AbortPrinter"):
+        getattr(winspool, _name).argtypes = [wt.HANDLE]
+        getattr(winspool, _name).restype = wt.BOOL
 
 # Commandes SetJob (winspool.h)
 JOB_CONTROL_CANCEL = 3
@@ -326,21 +328,53 @@ def raw_print(printer_name, data):
         if not job_id:
             raise OSError("StartDocPrinter a echoue (erreur %d)" % ctypes.get_last_error())
         try:
-            winspool.StartPagePrinter(handle)
-            written = wt.DWORD()
-            if not winspool.WritePrinter(handle, data, len(data), ctypes.byref(written)):
-                raise OSError("WritePrinter a echoue (erreur %d)" % ctypes.get_last_error())
-            winspool.EndPagePrinter(handle)
-        finally:
-            winspool.EndDocPrinter(handle)
+            if not winspool.StartPagePrinter(handle):
+                raise OSError("Démarrage de page impossible")
+            offset = 0
+            while offset < len(data):
+                chunk = data[offset:offset + 65536]
+                written = wt.DWORD()
+                if not winspool.WritePrinter(handle, chunk, len(chunk), ctypes.byref(written)) or not written.value:
+                    raise OSError("Envoi incomplet à l'imprimante (erreur %d)" % ctypes.get_last_error())
+                offset += written.value
+            if not winspool.EndPagePrinter(handle):
+                raise OSError("Fin de page impossible")
+            if not winspool.EndDocPrinter(handle):
+                raise OSError("Fin de document impossible")
+        except Exception:
+            winspool.AbortPrinter(handle)
+            raise
         return job_id
     finally:
         winspool.ClosePrinter(handle)
 
 
+ALLOWED_ORIGINS = {
+    "null",  # application Electron locale (file://)
+    "https://site-38181ec2e74446f585d6d6c069e7f97d.freebuff.page",
+    *filter(None, os.environ.get("PRINTME_ALLOWED_ORIGINS", "").split(",")),
+}
+
+def origin_allowed(origin):
+    if origin is None or origin in ALLOWED_ORIGINS:
+        return True
+    url = urlparse(origin)
+    return url.scheme == "http" and url.hostname in ("127.0.0.1", "localhost")
+
+
 class Handler(BaseHTTPRequestHandler):
+    def _authorized(self):
+        host = self.headers.get("Host", "").split(":")[0]
+        if host not in ("127.0.0.1", "localhost") or not origin_allowed(self.headers.get("Origin")):
+            self._json({"error": "Origine non autorisée"}, 403)
+            return False
+        return True
+
     def _cors(self):
-        self.send_header("Access-Control-Allow-Origin", "*")
+        origin = self.headers.get("Origin")
+        if origin is not None and origin_allowed(origin):
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         # Page servie en HTTPS (version en ligne) : Chrome demande cette
@@ -348,6 +382,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Private-Network", "true")
 
     def do_OPTIONS(self):
+        if not self._authorized(): return
         self.send_response(204)
         self._cors()
         self.end_headers()
@@ -362,6 +397,7 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
+        if not self._authorized(): return
         url = urlparse(self.path)
         if url.path == "/printers":
             try:
@@ -392,8 +428,18 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"error": "inconnu"}, 404)
 
     def do_POST(self):
-        length = int(self.headers.get("Content-Length") or 0)
-        raw = self.rfile.read(length) if length else b""
+        if not self._authorized(): return
+        if "application/json" not in self.headers.get("Content-Type", ""):
+            self._json({"error": "Content-Type application/json requis"}, 415)
+            return
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+            if not 0 < length <= 16 * 1024 * 1024:
+                raise ValueError("Taille de requête invalide (maximum 16 Mo)")
+            raw = self.rfile.read(length)
+        except ValueError as error:
+            self._json({"error": str(error)}, 400)
+            return
         if self.path == "/printers":
             details = list_printer_details()
             self._json({"printers": [d["name"] for d in details], "details": details})
@@ -402,7 +448,7 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 payload = json.loads(raw.decode("utf-8"))
                 name = payload.get("printer")
-                data = base64.b64decode(payload.get("data", ""))
+                data = base64.b64decode(payload.get("data", ""), validate=True)
                 if not name or not data:
                     self._json({"error": "printer ou data manquant"}, 400)
                     return
@@ -436,6 +482,8 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    if winspool is None:
+        raise SystemExit("L'assistant RAW nécessite Windows. Utilisez l'impression système sur cet appareil.")
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     print("PRINT ME helper en ecoute sur http://%s:%d" % (HOST, PORT), flush=True)
     # Pas d'enumeration au demarrage : EnumPrintersW faillait tuer le processus
